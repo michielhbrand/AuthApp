@@ -1,0 +1,205 @@
+# AuthApp
+
+A small Vue 3 + Supabase authentication demo: email/password sign-in, persisted sessions,
+a protected dashboard, and sign-out. The frontend is deployed to GitHub Pages with GitHub
+Actions.
+
+- **Live demo:** https://michielhbrand.github.io/AuthApp/
+- **Repository:** https://github.com/michielhbrand/AuthApp
+- **License:** [Apache-2.0](LICENSE)
+
+## Stack
+
+- Vue 3 + TypeScript + Vite
+- Vue Router and Pinia
+- Vuetify 4 (MIT) with MDI icons
+- Supabase Auth (`@supabase/supabase-js`)
+- Vitest, ESLint, Oxlint, Prettier
+- GitHub Actions and GitHub Pages
+
+## What it demonstrates
+
+- A login screen backed by Supabase Auth
+- Session persistence and automatic token refresh
+- A router guard that protects `/dashboard`
+- Sign-out and redirect back to the login screen
+- Build-time environment injection from GitHub Actions secrets
+- A GitHub Pages SPA fallback so `/AuthApp/dashboard` survives a hard refresh
+
+There is no sign-up flow. Demo users are created manually in Supabase, and sign-ups are
+disabled in both the cloud and local projects.
+
+## Prerequisites
+
+- Node.js 22 LTS. The repo includes `.nvmrc`; `nvm use` selects the right version.
+- npm 11 or newer. The project was generated with npm 12.
+- Docker, only if you want to run Supabase locally.
+- A Supabase account and a project for the cloud deployment.
+
+## Quick start with Supabase Cloud
+
+1. Create a project at https://supabase.com/dashboard. Save the database password somewhere
+   safe.
+2. Open the project's **Connect** dialog and copy:
+   - **Project URL**
+   - **Publishable key** (`sb_publishable_...`)
+3. In **Authentication → URL Configuration**:
+   - Site URL: `https://michielhbrand.github.io/AuthApp/`
+   - Redirect URLs: `http://localhost:5173/` and
+     `https://michielhbrand.github.io/AuthApp/`
+4. In **Authentication → Sign In / Providers → Email**, disable new user sign-ups.
+5. In **Authentication → Users → Add user**, create a demo user and enable auto-confirm.
+6. Create a local environment file:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` to the cloud values.
+
+7. Install and run:
+
+   ```bash
+   nvm use
+   npm ci
+   npm run dev
+   ```
+
+8. Sign in with the demo user. The login route is `/`; the protected page is `/dashboard`.
+
+> The publishable key is designed to be public. Never put a Supabase secret key
+> (`sb_secret_...`) or a legacy `service_role` key in a `VITE_*` variable.
+
+## Local Supabase
+
+Local Supabase gives you a database, Auth, and Studio without touching the cloud project.
+Docker must be running.
+
+```bash
+npm run supabase:start
+npm run supabase:status
+```
+
+`supabase status` prints the local API URL and publishable key. Put them in `.env.local`:
+
+```dotenv
+VITE_SUPABASE_URL=http://127.0.0.1:54321
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+Open Supabase Studio at http://localhost:54323, go to **Authentication → Users**, and add a
+demo user with auto-confirm enabled. The local project has sign-ups disabled in
+`supabase/config.toml`.
+
+Stop the stack when you are done:
+
+```bash
+npm run supabase:stop
+```
+
+If the agent shell or your terminal cannot access Docker after installation, restart the
+session or run commands through `sg docker -c '...'`.
+
+## Environment variables
+
+| Variable                        | Where it is used                          | Notes                                                    |
+| ------------------------------- | ----------------------------------------- | -------------------------------------------------------- |
+| `VITE_SUPABASE_URL`             | Local `.env.local`, GitHub Actions secret | Project URL, or local API URL                            |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Local `.env.local`, GitHub Actions secret | Publishable key (`sb_publishable_...`), not a secret key |
+
+Vite embeds `VITE_*` values into the browser bundle at build time. That is expected for the
+Supabase URL and publishable key.
+
+## Scripts
+
+| Command                   | Purpose                                 |
+| ------------------------- | --------------------------------------- |
+| `npm run dev`             | Start the Vite dev server               |
+| `npm run build`           | Typecheck and build to `dist/`          |
+| `npm run preview`         | Preview the production build            |
+| `npm run typecheck`       | Run `vue-tsc`                           |
+| `npm run lint`            | Run Oxlint and ESLint in check mode     |
+| `npm run lint:fix`        | Apply safe lint fixes                   |
+| `npm run format`          | Format the repository with Prettier     |
+| `npm run format:check`    | Verify formatting without writing       |
+| `npm test`                | Run unit tests once                     |
+| `npm run test:unit`       | Run Vitest in watch mode                |
+| `npm run validate:env`    | Validate the Supabase build environment |
+| `npm run supabase:start`  | Start the local Supabase stack          |
+| `npm run supabase:status` | Show local URL and keys                 |
+| `npm run supabase:stop`   | Stop the local Supabase stack           |
+
+## GitHub Actions secrets
+
+The deploy workflow reads two repository secrets:
+
+```bash
+gh secret set VITE_SUPABASE_URL --repo michielhbrand/AuthApp
+gh secret set VITE_SUPABASE_PUBLISHABLE_KEY --repo michielhbrand/AuthApp
+```
+
+Paste the values at the prompts; avoid putting them in shell history. Verify with:
+
+```bash
+gh secret list --repo michielhbrand/AuthApp
+```
+
+## Deployment
+
+- `ci.yml` runs lint, formatting, typecheck, tests, and a placeholder build on pull requests
+  and pushes to `main`.
+- `deploy.yml` builds with the real secrets and deploys the `dist/` artifact to GitHub Pages
+  on every push to `main` or manual dispatch.
+- The build `base` is `/AuthApp/` in production. If the repository is renamed, update the
+  base in `vite.config.ts`, the Pages URL in the Supabase redirect settings, and this README.
+- `scripts/postbuild.mjs` copies `index.html` to `404.html` and writes `.nojekyll`. GitHub
+  Pages serves the copy for unknown paths, which lets Vue Router handle `/dashboard`.
+
+Enable Pages with **Settings → Pages → Source: GitHub Actions** if it is not already enabled.
+
+## Releases
+
+Deployment follows `main`; releases are explicit version markers. After a successful deploy:
+
+```bash
+git tag -a v0.1.0 -m "v0.1.0"
+git push origin v0.1.0
+gh release create v0.1.0 --generate-notes
+```
+
+## Project structure
+
+```text
+src/
+  lib/supabase.ts          Supabase client and environment validation
+  stores/auth.ts           Session state, sign-in, sign-out
+  router/index.ts          Routes and authentication guard
+  views/LoginView.vue      Login form
+  views/DashboardView.vue  Protected session details
+  plugins/vuetify.ts       Vuetify setup
+scripts/
+  postbuild.mjs            GitHub Pages 404 fallback and .nojekyll
+  validate-env.mjs         Deploy-time environment validation
+supabase/config.toml       Local Supabase configuration
+docs/                      Architecture and decision records
+```
+
+## Security notes
+
+- Only the Supabase publishable key is shipped to the browser. The secret key is never used
+  by this project.
+- Sessions are stored in browser storage by `@supabase/supabase-js`. Treat the app as
+  vulnerable to XSS and keep dependencies and content secure.
+- No database tables exist yet. If you add tables, enable Row Level Security and write
+  policies for the `anon` and `authenticated` roles.
+- Sign-ups are disabled. Create accounts manually in the Supabase dashboard or local Studio.
+
+## Documentation for agents
+
+- [AGENTS.md](AGENTS.md) — commands, conventions, and constraints
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — runtime and deployment architecture
+- [docs/DECISIONS.md](docs/DECISIONS.md) — architecture decision records
+
+## License
+
+Copyright 2026 Michiel Brand. Licensed under the [Apache License, Version 2.0](LICENSE).
