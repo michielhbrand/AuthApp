@@ -69,6 +69,8 @@ npm run build
 - `scripts/postbuild.mjs` — copies `index.html` to `404.html` and writes `.nojekyll`.
 - `.github/workflows/ci.yml` — checks on pull requests and pushes to `main`.
 - `.github/workflows/deploy.yml` — builds with secrets and deploys to GitHub Pages.
+- `.github/workflows/release.yml` — creates GitHub releases with `semantic-release`.
+- `.releaserc.json` — release branches, tag format, and plugins.
 
 See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
 
@@ -82,6 +84,8 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
   `/set-password`.
 - Use Vuetify 4 components and MDI icon names. Do not upgrade to a non-MIT UI major without
   reviewing its license.
+- Use Conventional Commits for commit messages and PR titles. `semantic-release` uses them
+  to choose patch/minor/major versions; non-conventional commits do not create releases.
 - Use the `@/` alias for imports from `src/`.
 - No comments unless they explain non-obvious behavior.
 - Match existing formatting. Prettier and ESLint are authoritative.
@@ -100,8 +104,9 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
   hard refresh.
 - `.github/workflows/deploy.yml` is the only production deploy path. Keep Pages permissions
   (`pages: write`, `id-token: write`) and the `github-pages` environment.
-- Deployments occur on pushes to `main`. Releases are manual semver tags followed by
-  `gh release create`.
+- Deployments occur on pushes to `main`. Releases are created automatically by
+  `semantic-release` from Conventional Commits; do not create tags or releases manually
+  unless recovering from a failed release.
 
 ## Supabase constraints
 

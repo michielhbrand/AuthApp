@@ -181,13 +181,32 @@ Enable Pages with **Settings → Pages → Source: GitHub Actions** if it is not
 
 ## Releases
 
-Deployment follows `main`; releases are explicit version markers. After a successful deploy:
+Deployment follows `main`; releases are version markers created automatically by
+`.github/workflows/release.yml` using `semantic-release`. No manual tagging or
+`gh release create` is needed.
 
-```bash
-git tag -a v0.1.0 -m "v0.1.0"
-git push origin v0.1.0
-gh release create v0.1.0 --generate-notes
+Every push to `main` inspects commits since the last release tag and creates a GitHub
+release with generated notes when a release-worthy change is found. Commit messages and
+PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+| Commit                                  | Release |
+| --------------------------------------- | ------- |
+| `fix: ...` or `perf: ...`               | patch   |
+| `feat: ...`                             | minor   |
+| `feat!: ...` or `BREAKING CHANGE: ...`  | major   |
+| `chore:`, `docs:`, `test:`, `refactor:` | none    |
+
+Examples:
+
+```text
+fix(auth): handle expired invite links
+feat(dashboard): show session expiry
+feat(auth)!: require email confirmation
 ```
+
+Release versions come from Git tags (`vX.Y.Z`); the workflow does not bump
+`package.json`. Non-conventional commits are ignored by the release calculation. If a
+push does not warrant a release, the deployed site can be newer than the latest release.
 
 ## Project structure
 

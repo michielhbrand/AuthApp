@@ -94,11 +94,22 @@ push to main
      -> actions/upload-pages-artifact
      -> actions/deploy-pages
   -> https://michielhbrand.github.io/AuthApp/
+
+push to main (in parallel)
+  -> release.yml
+     -> npm ci
+     -> semantic-release
+     -> tag vX.Y.Z + GitHub release with generated notes
 ```
 
 `ci.yml` runs on pull requests and pushes to `main`. It builds with placeholder values so
 forks and untrusted PRs do not need secrets. The deploy workflow, which runs only from the
 trusted `main` branch or a manual dispatch, uses the real repository secrets.
+
+`release.yml` uses Conventional Commits to decide whether a release is needed. `fix` and
+`perf` create patches, `feat` creates minors, and breaking changes create majors. Releases
+do not deploy the site; Pages continues to follow every push to `main`, so the deployed site
+can be newer than the latest release.
 
 ## Environment matrix
 
@@ -121,6 +132,9 @@ trusted `main` branch or a manual dispatch, uses the real repository secrets.
   URL is wrong. Set it to the Pages origin and re-send the invitation.
 - Expired or already-used invite link: the user arrives without a session; `/set-password`
   shows the link error instead of the form.
+- No release after a push: the commit message is not a Conventional Commit or contains no
+  release-worthy type. The deploy still succeeds; rewrite the commit or create a release
+  manually only when recovering.
 - Pages direct navigation: served through `404.html`; if the fallback is removed, refreshing
   `/AuthApp/dashboard` returns a GitHub 404 page.
 - Renamed repository: production base and Supabase redirect URLs must change together.

@@ -18,6 +18,8 @@
     "lint:fix": "oxlint . --fix && eslint . --fix --cache",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run",
     "validate:env": "node scripts/validate-env.mjs",
     "postbuild": "node scripts/postbuild.mjs",
     "supabase:start": "supabase start",
@@ -33,6 +35,9 @@
     "vuetify": "^4.3.1"
   },
   "devDependencies": {
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/github": "^12.0.10",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "@tsconfig/node24": "^24.0.5",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^24.13.4",
@@ -50,6 +55,7 @@
     "npm-run-all2": "^9.0.3",
     "oxlint": "~1.82.0",
     "prettier": "3.9.6",
+    "semantic-release": "^25.0.9",
     "supabase": "^3.0.0",
     "typescript": "~6.0.0",
     "vite": "^8.2.2",
@@ -63,5 +69,13 @@
     "node": "^22.18.0 || >=24.12.0"
   },
   "license": "Apache-2.0",
-  "description": "Vue 3 + Supabase login demo deployed to GitHub Pages"
+  "description": "Vue 3 + Supabase login demo deployed to GitHub Pages",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michielhbrand/AuthApp.git"
+  },
+  "homepage": "https://michielhbrand.github.io/AuthApp/",
+  "bugs": {
+    "url": "https://github.com/michielhbrand/AuthApp/issues"
+  }
 }

@@ -92,7 +92,7 @@ Dates use ISO 8601. Status values are proposed, accepted, superseded, or depreca
 ## ADR-008: Deploy on main, release with manual tags
 
 - **Date:** 2026-11-03
-- **Status:** Accepted
+- **Status:** Superseded by ADR-012
 - **Context:** The project needs a simple, transparent release process without an automated
   changelog or semantic-release toolchain.
 - **Decision:** Every push to `main` deploys. Versioned releases are explicit semver tags
@@ -137,3 +137,20 @@ Dates use ISO 8601. Status values are proposed, accepted, superseded, or depreca
 - **Consequences:** The cloud Supabase Site URL must be the Pages origin. If it points at
   `localhost:3000`, invite links fail regardless of application code. The same route also
   supports future password recovery links.
+
+## ADR-012: Automated semantic releases from Conventional Commits
+
+- **Date:** 2026-11-04
+- **Status:** Accepted
+- **Context:** Manual tagging and `gh release create` are easy to forget and leave the
+  deployed site ahead of the latest release. Releases should be created consistently from
+  commit history.
+- **Decision:** Run `semantic-release` on every push to `main` from
+  `.github/workflows/release.yml`. Use the commit analyzer, release notes generator, and
+  GitHub plugins configured in `.releaserc.json`. Require Conventional Commits: `fix` and
+  `perf` produce patches, `feat` produces minors, and breaking changes produce majors.
+  Deployment remains independent and continues on every push to `main`.
+- **Consequences:** Only release-worthy commits create tags and GitHub releases. Commits
+  without a conventional type are ignored by semantic-release. Release versions come from
+  Git tags rather than `package.json`. The release workflow needs `contents: write` (and
+  issue/PR write for the GitHub plugin) but does not deploy the site.
