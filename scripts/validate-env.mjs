@@ -1,3 +1,14 @@
+import { existsSync, readFileSync } from 'node:fs'
+
+if (existsSync('.env.local')) {
+  for (const line of readFileSync('.env.local', 'utf8').split('\n')) {
+    const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/)
+    if (match && !process.env[match[1]]) {
+      process.env[match[1]] = match[2].replace(/^['"]|['"]$/g, '')
+    }
+  }
+}
+
 const required = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY']
 const missing = required.filter((name) => !process.env[name])
 
