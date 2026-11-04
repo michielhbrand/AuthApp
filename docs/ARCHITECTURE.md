@@ -4,7 +4,8 @@
 
 AuthApp is a static Vue 3 single-page application. All authentication is performed directly
 against Supabase Auth from the browser using the publishable key. There is no custom backend,
-no server-side session, and no database access yet.
+no server-side session, and no database access yet. Administrators provision users in
+Supabase and can invite them by email; invited users choose their own password.
 
 ```text
 Browser
@@ -38,6 +39,15 @@ GitHub Actions secrets -> Vite env -> bundled publishable key + URL -> GitHub Pa
    or `/dashboard`.
 8. `DashboardView.vue` reads the session from the store and displays non-sensitive session
    details. Sign-out calls `auth.signOut()`, clears the session, and returns to `/`.
+9. Invitation and recovery links arrive with a `type` in the URL hash or query.
+   `src/lib/auth-link.ts` reads that type before `supabase-js` consumes and clears the URL.
+   The store sets `passwordSetupRequired` for `invite` and `recovery` links.
+10. If the user lands on `/` with a pending password setup, the router guard sends them to
+    `/set-password`. Supabase Auth has already exchanged the link for a session.
+11. `SetPasswordView.vue` validates the new password and calls
+    `supabase.auth.updateUser({ password })` through `auth.setPassword()`. On success the
+    flag is cleared and the user continues to `/dashboard`. If the link is expired or
+    missing, the page shows the error and points back to sign-in.
 
 ## State ownership
 
@@ -47,7 +57,8 @@ GitHub Actions secrets -> Vite env -> bundled publishable key + URL -> GitHub Pa
 - `isAuthenticated`
 - `initialized` and `loading`
 - `error` (user-facing message)
-- `initialize`, `signIn`, `signOut`
+- `initialize`, `signIn`, `setPassword`, `signOut`
+- `passwordSetupRequired` and `linkError` for invitation/recovery links
 
 Components must not call `supabase.auth` directly. This keeps error handling and session
 updates consistent.
@@ -60,7 +71,8 @@ without them. It also rejects a `sb_secret_` key defensively.
 
 - History mode: `createWebHistory(import.meta.env.BASE_URL)`.
 - Dev base: `/`; production base: `/AuthApp/`.
-- Routes: `/` (login), `/dashboard` (protected), catch-all redirect to `/`.
+- Routes: `/` (login), `/set-password` (invite/recovery or password update), `/dashboard`
+  (protected), catch-all redirect to `/`.
 - GitHub Pages does not rewrite unknown paths. `scripts/postbuild.mjs` copies the built
   `index.html` to `404.html` and writes `.nojekyll`. A direct request to
   `/AuthApp/dashboard` receives the 404 document, which boots Vue Router with the original
@@ -105,6 +117,10 @@ trusted `main` branch or a manual dispatch, uses the real repository secrets.
 - Unconfirmed user: Supabase returns an email-confirmation error; the store explains how to
   fix it.
 - Invalid credentials: mapped to "Invalid email or password."
+- Invite email opens the wrong host (for example `localhost:3000`): the cloud Supabase Site
+  URL is wrong. Set it to the Pages origin and re-send the invitation.
+- Expired or already-used invite link: the user arrives without a session; `/set-password`
+  shows the link error instead of the form.
 - Pages direct navigation: served through `404.html`; if the fallback is removed, refreshing
   `/AuthApp/dashboard` returns a GitHub 404 page.
 - Renamed repository: production base and Supabase redirect URLs must change together.
@@ -114,7 +130,8 @@ trusted `main` branch or a manual dispatch, uses the real repository secrets.
 - If a database table is added, create a migration in `supabase/migrations`, enable RLS, and
   add policies for `anon` and `authenticated`. Keep the secret key server-side; this static
   app must never use it.
-- If password reset or magic links are added, extend the Supabase redirect allow-list for
-  both local and Pages origins and add the corresponding routes.
+- Password recovery links already use the same `/set-password` flow. If magic links are
+  added, extend the Supabase redirect allow-list for both local and Pages origins and add
+  the corresponding routes.
 - If a custom domain is used, update the Vite base (possibly `/`), Supabase Site URL and
   redirect URLs, and the deployment documentation.

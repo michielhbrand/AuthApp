@@ -122,3 +122,18 @@ Dates use ISO 8601. Status values are proposed, accepted, superseded, or depreca
   `Copyright 2026 Michiel Brand`.
 - **Consequences:** Dependencies must remain license-compatible. The Vuetify choice was
   partly driven by this constraint.
+
+## ADR-011: Admin invitations with an in-app password setup route
+
+- **Date:** 2026-11-04
+- **Status:** Accepted
+- **Context:** Administrators should be able to invite users from the Supabase dashboard and
+  let each recipient choose a password. Supabase invitation emails redirect to the project's
+  configured Site URL, and the invite token must be exchanged before the password update.
+- **Decision:** Detect the `invite` and `recovery` link types in `src/lib/auth-link.ts`
+  before Supabase consumes the URL. Track `passwordSetupRequired` in the auth store, route
+  those users to `/set-password`, and call `supabase.auth.updateUser({ password })` from the
+  store. Keep public sign-ups disabled; invitations are an administrator action.
+- **Consequences:** The cloud Supabase Site URL must be the Pages origin. If it points at
+  `localhost:3000`, invite links fail regardless of application code. The same route also
+  supports future password recovery links.

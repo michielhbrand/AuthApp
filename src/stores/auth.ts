@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { initialAuthLinkError, initialAuthLinkType } from '@/lib/auth-link'
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -30,6 +31,22 @@ function friendlyErrorMessage(message: string): string {
     return 'Could not reach Supabase. Check your connection and environment values.'
   }
 
+  if (normalized.includes('password should be at least')) {
+    return 'Password must be at least 8 characters.'
+  }
+
+  if (normalized.includes('should be different')) {
+    return 'Choose a password different from your current one.'
+  }
+
+  if (
+    normalized.includes('link is invalid') ||
+    normalized.includes('token has expired') ||
+    normalized.includes('invalid or expired')
+  ) {
+    return 'This link is invalid or has expired. Ask for a new invitation.'
+  }
+
   return message
 }
 
@@ -38,6 +55,8 @@ export const useAuthStore = defineStore('auth', () => {
   const initialized = ref(false)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const linkError = ref<string | null>(initialAuthLinkError)
+  const passwordSetupRequired = ref(initialAuthLinkType !== null)
   const user = computed<User | null>(() => session.value?.user ?? null)
   const isAuthenticated = computed(() => session.value !== null)
   let unsubscribe: (() => void) | undefined
@@ -59,8 +78,12 @@ export const useAuthStore = defineStore('auth', () => {
       session.value = data.session
 
       if (!unsubscribe) {
-        const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+        const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
           session.value = nextSession
+
+          if (event === 'PASSWORD_RECOVERY') {
+            passwordSetupRequired.value = true
+          }
         })
         unsubscribe = () => listener.subscription.unsubscribe()
       }
@@ -96,6 +119,27 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function setPassword(password: string): Promise<boolean> {
+    loading.value = true
+    error.value = null
+
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password })
+      if (updateError) {
+        throw updateError
+      }
+
+      passwordSetupRequired.value = false
+      linkError.value = null
+      return true
+    } catch (caught) {
+      error.value = friendlyErrorMessage(errorMessage(caught))
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function signOut(): Promise<void> {
     loading.value = true
     error.value = null
@@ -107,6 +151,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       session.value = null
+      passwordSetupRequired.value = false
     } catch (caught) {
       error.value = friendlyErrorMessage(errorMessage(caught))
     } finally {
@@ -119,10 +164,13 @@ export const useAuthStore = defineStore('auth', () => {
     initialized,
     loading,
     error,
+    linkError,
+    passwordSetupRequired,
     user,
     isAuthenticated,
     initialize,
     signIn,
+    setPassword,
     signOut,
   }
 })

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   onAuthStateChange: vi.fn<(...args: unknown[]) => unknown>(),
   signInWithPassword: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  updateUser: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   signOut: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
 }))
 
@@ -81,6 +82,31 @@ describe('auth store', () => {
     expect(signedIn).toBe(false)
     expect(auth.isAuthenticated).toBe(false)
     expect(auth.error).toBe('Invalid email or password.')
+  })
+
+  it('sets a password and clears the setup requirement', async () => {
+    mocks.updateUser.mockResolvedValue({ data: { user: session.user }, error: null })
+    const auth = useAuthStore()
+    auth.passwordSetupRequired = true
+
+    const updated = await auth.setPassword('new-password')
+
+    expect(updated).toBe(true)
+    expect(auth.passwordSetupRequired).toBe(false)
+    expect(mocks.updateUser).toHaveBeenCalledWith({ password: 'new-password' })
+  })
+
+  it('explains a password that is too short', async () => {
+    mocks.updateUser.mockResolvedValue({
+      data: { user: null },
+      error: new Error('Password should be at least 8 characters'),
+    })
+    const auth = useAuthStore()
+
+    const updated = await auth.setPassword('short')
+
+    expect(updated).toBe(false)
+    expect(auth.error).toBe('Password must be at least 8 characters.')
   })
 
   it('clears the session on sign out', async () => {

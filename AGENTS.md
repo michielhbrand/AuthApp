@@ -6,8 +6,9 @@ Instructions for agents working in this repository. Read this file and
 ## Purpose
 
 AuthApp is a deliberately small Vue 3 + Supabase authentication demo. It is hosted on
-GitHub Pages and exists to demonstrate a login screen, persisted sessions, a protected page,
-and sign-out. Keep it focused; do not add unrelated product features.
+GitHub Pages and exists to demonstrate a login screen, admin invitations that let users
+choose a password, persisted sessions, a protected page, and sign-out. Keep it focused; do
+not add unrelated product features.
 
 ## Commands
 
@@ -55,9 +56,13 @@ npm run build
 ## Architecture map
 
 - `src/lib/supabase.ts` — the only Supabase client instance.
-- `src/stores/auth.ts` — owns session state, initialization, sign-in, and sign-out.
+- `src/lib/auth-link.ts` — reads invite/recovery link parameters before Supabase consumes
+  the URL.
+- `src/stores/auth.ts` — owns session state, initialization, sign-in, password setup, and
+  sign-out.
 - `src/router/index.ts` — routes and the auth guard.
 - `src/views/LoginView.vue` — login form and validation.
+- `src/views/SetPasswordView.vue` — invite and password update form.
 - `src/views/DashboardView.vue` — protected session details.
 - `src/plugins/vuetify.ts` — Vuetify configuration.
 - `vite.config.ts` — production base `/AuthApp/`, Vuetify auto-import, aliases.
@@ -72,6 +77,9 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
 - Use Vue single-file components with `<script setup lang="ts">`.
 - Keep auth state in the Pinia store. Components should not call `supabase.auth` directly.
 - Keep the Supabase client singleton in `src/lib/supabase.ts`.
+- Invite and recovery links arrive with a `type` in the URL hash or query. Preserve the
+  detection in `src/lib/auth-link.ts`; do not let the login redirect bypass
+  `/set-password`.
 - Use Vuetify 4 components and MDI icon names. Do not upgrade to a non-MIT UI major without
   reviewing its license.
 - Use the `@/` alias for imports from `src/`.
@@ -85,6 +93,9 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
 - The site is a GitHub Pages project site at `https://michielhbrand.github.io/AuthApp/`.
 - Production `base` must remain `/AuthApp/` unless the repository is renamed. If it changes,
   update `vite.config.ts`, Supabase redirect URLs, the README, and the docs.
+- The cloud Supabase **Site URL** must be `https://michielhbrand.github.io/AuthApp/`.
+  Invitation emails build their link from it. If it points at `localhost:3000`, recipients
+  cannot accept invites.
 - Do not remove the `404.html` fallback; it is what makes `/AuthApp/dashboard` work on a
   hard refresh.
 - `.github/workflows/deploy.yml` is the only production deploy path. Keep Pages permissions
@@ -94,8 +105,11 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
 
 ## Supabase constraints
 
-- Sign-ups are disabled in cloud and local settings. Demo users are created manually in the
-  dashboard or local Studio.
+- Public sign-ups are disabled in cloud and local settings. Administrators create users or
+  send invitations from the dashboard or local Studio. Invited users choose their password
+  through `/set-password`.
+- Keep the cloud Site URL aligned with the Pages origin so invite links return to the app.
+  Local invitations use `supabase/config.toml` and Mailpit at `http://localhost:54324`.
 - There are no database tables. If you add one, add a migration under `supabase/migrations`,
   enable Row Level Security, and write policies for the `anon` and `authenticated` roles.
 - Use the publishable key for client access. Never introduce a service-role client into the

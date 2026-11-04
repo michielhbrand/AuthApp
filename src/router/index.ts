@@ -8,6 +8,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/LoginView.vue'),
   },
   {
+    path: '/set-password',
+    name: 'set-password',
+    component: () => import('@/views/SetPasswordView.vue'),
+  },
+  {
     path: '/dashboard',
     name: 'dashboard',
     component: () => import('@/views/DashboardView.vue'),
@@ -32,6 +37,10 @@ router.beforeEach((to) => {
       name: 'login',
       query: { redirect: to.fullPath },
     }
+  }
+
+  if (to.name === 'login' && auth.passwordSetupRequired) {
+    return { name: 'set-password' }
   }
 
   if (to.name === 'login' && auth.isAuthenticated) {

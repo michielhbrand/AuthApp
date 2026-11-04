@@ -1,8 +1,8 @@
 # AuthApp
 
-A small Vue 3 + Supabase authentication demo: email/password sign-in, persisted sessions,
-a protected dashboard, and sign-out. The frontend is deployed to GitHub Pages with GitHub
-Actions.
+A small Vue 3 + Supabase authentication demo: email/password sign-in, invited users who
+choose their own password, persisted sessions, a protected dashboard, and sign-out. The
+frontend is deployed to GitHub Pages with GitHub Actions.
 
 - **Live demo:** https://michielhbrand.github.io/AuthApp/
 - **Repository:** https://github.com/michielhbrand/AuthApp
@@ -20,14 +20,15 @@ Actions.
 ## What it demonstrates
 
 - A login screen backed by Supabase Auth
+- Admin invitations that let users choose their own password
 - Session persistence and automatic token refresh
 - A router guard that protects `/dashboard`
 - Sign-out and redirect back to the login screen
 - Build-time environment injection from GitHub Actions secrets
 - A GitHub Pages SPA fallback so `/AuthApp/dashboard` survives a hard refresh
 
-There is no sign-up flow. Demo users are created manually in Supabase, and sign-ups are
-disabled in both the cloud and local projects.
+Public sign-ups are disabled. Administrators can add users directly or invite them from the
+Supabase dashboard; invited users finish at `/set-password`.
 
 ## Prerequisites
 
@@ -48,7 +49,8 @@ disabled in both the cloud and local projects.
    - Redirect URLs: `http://localhost:5173/` and
      `https://michielhbrand.github.io/AuthApp/`
 4. In **Authentication → Sign In / Providers → Email**, disable new user sign-ups.
-5. In **Authentication → Users → Add user**, create a demo user and enable auto-confirm.
+5. In **Authentication → Users**, either add a demo user with auto-confirm enabled or use
+   **Invite user** so the recipient chooses their own password.
 6. Create a local environment file:
 
    ```bash
@@ -70,6 +72,25 @@ disabled in both the cloud and local projects.
 > The publishable key is designed to be public. Never put a Supabase secret key
 > (`sb_secret_...`) or a legacy `service_role` key in a `VITE_*` variable.
 
+## Inviting users
+
+Invite users from **Authentication → Users → Invite user**. Supabase sends an email whose
+link returns the user to the project's **Site URL** with an invite token. The app detects
+the invite, opens `/set-password`, and calls `supabase.auth.updateUser({ password })` to save
+the password they choose. After saving, they land on `/dashboard`.
+
+The invitation link is built from the cloud project's **Site URL**, not from this
+repository. If an invite opens `http://localhost:3000` or another wrong host, fix it in
+**Authentication → URL Configuration**:
+
+- Site URL: `https://michielhbrand.github.io/AuthApp/`
+- Redirect URLs: `http://localhost:5173/` and
+  `https://michielhbrand.github.io/AuthApp/`
+
+Then send a new invitation; previously sent links keep the old destination. Local Studio
+invitations use the local Site URL from `supabase/config.toml` and appear in Mailpit at
+http://localhost:54324.
+
 ## Local Supabase
 
 Local Supabase gives you a database, Auth, and Studio without touching the cloud project.
@@ -88,7 +109,8 @@ VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
 Open Supabase Studio at http://localhost:54323, go to **Authentication → Users**, and add a
-demo user with auto-confirm enabled. The local project has sign-ups disabled in
+demo user with auto-confirm enabled or invite one. Local invitation emails are captured by
+Mailpit at http://localhost:54324. The local project has sign-ups disabled in
 `supabase/config.toml`.
 
 Stop the stack when you are done:
@@ -172,9 +194,11 @@ gh release create v0.1.0 --generate-notes
 ```text
 src/
   lib/supabase.ts          Supabase client and environment validation
-  stores/auth.ts           Session state, sign-in, sign-out
+  lib/auth-link.ts         Detects invite/recovery links before Supabase consumes them
+  stores/auth.ts           Session state, sign-in, sign-out, password setup
   router/index.ts          Routes and authentication guard
   views/LoginView.vue      Login form
+  views/SetPasswordView.vue Invite and password update form
   views/DashboardView.vue  Protected session details
   plugins/vuetify.ts       Vuetify setup
 scripts/
@@ -192,7 +216,8 @@ docs/                      Architecture and decision records
   vulnerable to XSS and keep dependencies and content secure.
 - No database tables exist yet. If you add tables, enable Row Level Security and write
   policies for the `anon` and `authenticated` roles.
-- Sign-ups are disabled. Create accounts manually in the Supabase dashboard or local Studio.
+- Sign-ups are disabled. Administrators create accounts or send invitations from the
+  Supabase dashboard or local Studio.
 
 ## Documentation for agents
 

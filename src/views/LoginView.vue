@@ -86,7 +86,8 @@ async function submit(): Promise<void> {
             <v-divider class="my-4" />
 
             <p class="text-caption text-medium-emphasis mb-0">
-              Accounts are provisioned manually in Supabase; sign-up is disabled.
+              Accounts are provisioned by an administrator; sign-up is disabled. If you received an
+              invitation email, open its link to choose a password.
             </p>
           </v-card-text>
         </v-card>
