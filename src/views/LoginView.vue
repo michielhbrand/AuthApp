@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import AuthShell from '@/components/AuthShell.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -36,62 +37,60 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <v-container class="fill-height" fluid>
-    <v-row align="center" justify="center">
-      <v-col cols="12" sm="8" md="5" lg="4">
-        <v-card class="pa-2" elevation="8" rounded="lg">
-          <v-card-title class="pt-4">Sign in</v-card-title>
-          <v-card-subtitle>Vue 3 + Supabase authentication demo</v-card-subtitle>
+  <AuthShell
+    eyebrow="Secure access"
+    title="Welcome back."
+    subtitle="Sign in to review your account, active session, and access details."
+  >
+    <div class="panel-head">
+      <div>
+        <p class="mono-label">Account access</p>
+        <h2 class="panel-title mt-1">Sign in</h2>
+      </div>
+      <span class="status-badge">Email</span>
+    </div>
 
-          <v-card-text class="pt-4">
-            <v-alert v-if="auth.error" class="mb-4" density="compact" type="error" variant="tonal">
-              {{ auth.error }}
-            </v-alert>
+    <v-alert v-if="auth.error" class="mb-5" density="compact" type="error">
+      {{ auth.error }}
+    </v-alert>
 
-            <v-form ref="form" @submit.prevent="submit">
-              <v-text-field
-                v-model="email"
-                autocomplete="email"
-                label="Email"
-                prepend-inner-icon="mdi-email-outline"
-                required
-                :rules="emailRules"
-                type="email"
-              />
+    <v-form ref="form" class="auth-form" @submit.prevent="submit">
+      <v-text-field
+        v-model="email"
+        autocomplete="email"
+        class="mb-3"
+        label="Email"
+        prepend-inner-icon="mdi-email-outline"
+        required
+        :rules="emailRules"
+        type="email"
+      />
 
-              <v-text-field
-                v-model="password"
-                autocomplete="current-password"
-                label="Password"
-                prepend-inner-icon="mdi-lock-outline"
-                required
-                :rules="passwordRules"
-                :type="showPassword ? 'text' : 'password'"
-                :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
-                @click:append-inner="showPassword = !showPassword"
-              />
+      <v-text-field
+        v-model="password"
+        autocomplete="current-password"
+        class="mb-3"
+        label="Password"
+        prepend-inner-icon="mdi-lock-outline"
+        required
+        :rules="passwordRules"
+        :type="showPassword ? 'text' : 'password'"
+        :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
+        @click:append-inner="showPassword = !showPassword"
+      />
 
-              <v-btn
-                block
-                class="mt-2"
-                color="primary"
-                :loading="auth.loading"
-                size="large"
-                type="submit"
-              >
-                Sign in
-              </v-btn>
-            </v-form>
+      <v-btn block color="primary" :loading="auth.loading" size="large" type="submit">
+        Sign in
+        <v-icon end icon="mdi-arrow-right" />
+      </v-btn>
+    </v-form>
 
-            <v-divider class="my-4" />
-
-            <p class="text-caption text-medium-emphasis mb-0">
-              Accounts are provisioned by an administrator; sign-up is disabled. If you received an
-              invitation email, open its link to choose a password.
-            </p>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+    <div class="auth-note">
+      <v-icon icon="mdi-shield-account-outline" size="18" />
+      <p>
+        Accounts are provisioned by an administrator; sign-up is disabled. If you received an
+        invitation email, open its link to choose a password.
+      </p>
+    </div>
+  </AuthShell>
 </template>

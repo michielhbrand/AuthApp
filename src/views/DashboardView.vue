@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import BrandMark from '@/components/BrandMark.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -8,12 +9,29 @@ const router = useRouter()
 
 const provider = computed(() => auth.user?.app_metadata.provider ?? 'email')
 
-const sessionExpiry = computed(() => {
-  if (!auth.session?.expires_at) {
-    return 'Unknown'
-  }
+const expiryDate = computed(() =>
+  auth.session?.expires_at ? new Date(auth.session.expires_at * 1000) : null,
+)
 
-  return new Date(auth.session.expires_at * 1000).toLocaleString()
+const sessionExpiry = computed(() => expiryDate.value?.toLocaleString() ?? 'Unknown')
+
+const sessionExpiryShort = computed(
+  () =>
+    expiryDate.value?.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }) ?? 'Unknown',
+)
+
+const initials = computed(() => {
+  const localPart = (auth.user?.email ?? 'authapp').split('@')[0] ?? 'authapp'
+  const parts = localPart.split(/[._-]+/).filter(Boolean)
+  const first = parts[0] ?? 'A'
+  const second = parts[1] ?? first.charAt(1) ?? 'A'
+
+  return `${first.charAt(0)}${second.charAt(0)}`.toUpperCase()
 })
 
 async function signOut(): Promise<void> {
@@ -23,52 +41,158 @@ async function signOut(): Promise<void> {
 </script>
 
 <template>
-  <v-container class="fill-height" fluid>
-    <v-row align="center" justify="center">
-      <v-col cols="12" sm="10" md="7" lg="5">
-        <v-card elevation="8" rounded="lg">
-          <v-card-item>
-            <v-card-title>Signed in</v-card-title>
-            <v-card-subtitle>Your Supabase session is active.</v-card-subtitle>
-          </v-card-item>
+  <div class="orbital-page">
+    <div class="orbital-orbit orbital-orbit--a" aria-hidden="true" />
+    <div class="orbital-orbit orbital-orbit--b" aria-hidden="true" />
 
-          <v-card-text>
-            <v-alert v-if="auth.error" class="mb-4" density="compact" type="error" variant="tonal">
-              {{ auth.error }}
-            </v-alert>
+    <header class="dashboard-topbar">
+      <BrandMark context="Flight deck" />
+      <div class="topbar-actions">
+        <span class="topbar-status">
+          <span class="status-badge status-badge--signal">
+            <span class="status-dot" />
+            Session active
+          </span>
+        </span>
+        <span class="user-avatar" aria-hidden="true">{{ initials }}</span>
+      </div>
+    </header>
 
-            <v-list lines="two">
-              <v-list-item
-                prepend-icon="mdi-email-outline"
-                subtitle="Email"
-                :title="auth.user?.email ?? 'Unknown'"
-              />
-              <v-list-item
-                prepend-icon="mdi-identifier"
-                subtitle="User ID"
-                :title="auth.user?.id ?? 'Unknown'"
-              />
-              <v-list-item
-                prepend-icon="mdi-shield-account-outline"
-                subtitle="Auth provider"
-                :title="provider"
-              />
-              <v-list-item
-                prepend-icon="mdi-clock-outline"
-                subtitle="Session expires"
-                :title="sessionExpiry"
-              />
-            </v-list>
-          </v-card-text>
+    <main class="dashboard-main">
+      <v-alert v-if="auth.error" class="mb-6" type="error">
+        {{ auth.error }}
+      </v-alert>
 
-          <v-card-actions>
-            <v-spacer />
-            <v-btn color="primary" :loading="auth.loading" variant="flat" @click="signOut">
-              Sign out
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-col>
-    </v-row>
-  </v-container>
+      <div class="dashboard-heading">
+        <div>
+          <p class="eyebrow">Flight deck</p>
+          <h1 class="dashboard-title">Session overview.</h1>
+          <p class="lede">
+            Your Supabase identity, active session, and access details at a glance.
+          </p>
+        </div>
+
+        <v-btn
+          :loading="auth.loading"
+          prepend-icon="mdi-logout"
+          variant="outlined"
+          @click="signOut"
+        >
+          Sign out
+        </v-btn>
+      </div>
+
+      <div class="stat-grid">
+        <article class="stat-card">
+          <span class="mono-label">Session</span>
+          <strong class="stat-value">Active</strong>
+          <span class="stat-meta">JWT persisted locally</span>
+        </article>
+        <article class="stat-card">
+          <span class="mono-label">Provider</span>
+          <strong class="stat-value">{{ provider }}</strong>
+          <span class="stat-meta">Supabase Auth</span>
+        </article>
+        <article class="stat-card">
+          <span class="mono-label">Expires</span>
+          <strong class="stat-value">{{ sessionExpiryShort }}</strong>
+          <span class="stat-meta">Auto-refresh enabled</span>
+        </article>
+      </div>
+
+      <div class="dashboard-grid">
+        <section class="data-panel" aria-labelledby="identity-title">
+          <div class="data-panel-head">
+            <div>
+              <p class="mono-label">Identity record</p>
+              <h2 id="identity-title" class="panel-title mt-1">Account details</h2>
+            </div>
+            <span class="status-badge">Supabase auth</span>
+          </div>
+
+          <div class="data-panel-body">
+            <div class="identity-row">
+              <span class="identity-index">01</span>
+              <div>
+                <span class="identity-label">Email</span>
+                <p class="identity-value">{{ auth.user?.email ?? 'Unknown' }}</p>
+              </div>
+              <v-icon class="identity-icon" icon="mdi-email-outline" size="20" />
+            </div>
+
+            <div class="identity-row">
+              <span class="identity-index">02</span>
+              <div>
+                <span class="identity-label">User ID</span>
+                <p class="identity-value identity-value--mono">{{ auth.user?.id ?? 'Unknown' }}</p>
+              </div>
+              <v-icon class="identity-icon" icon="mdi-identifier" size="20" />
+            </div>
+
+            <div class="identity-row">
+              <span class="identity-index">03</span>
+              <div>
+                <span class="identity-label">Auth provider</span>
+                <p class="identity-value">{{ provider }}</p>
+              </div>
+              <v-icon class="identity-icon" icon="mdi-shield-account-outline" size="20" />
+            </div>
+
+            <div class="identity-row">
+              <span class="identity-index">04</span>
+              <div>
+                <span class="identity-label">Session expires</span>
+                <p class="identity-value">{{ sessionExpiry }}</p>
+              </div>
+              <v-icon class="identity-icon" icon="mdi-clock-outline" size="20" />
+            </div>
+          </div>
+        </section>
+
+        <aside class="aside-stack">
+          <section class="data-panel" aria-labelledby="status-title">
+            <div class="data-panel-head">
+              <div>
+                <p class="mono-label">Connection</p>
+                <h2 id="status-title" class="panel-title mt-1">Session status</h2>
+              </div>
+            </div>
+
+            <div class="data-panel-body">
+              <div class="signal-card">
+                <span class="status-dot" />
+                <div>
+                  <strong>Session active</strong>
+                  <span>Supabase Auth / auto-refresh</span>
+                </div>
+              </div>
+
+              <dl class="meta-list mt-3">
+                <div>
+                  <dt>Expires</dt>
+                  <dd>{{ sessionExpiry }}</dd>
+                </div>
+                <div>
+                  <dt>Provider</dt>
+                  <dd>{{ provider }}</dd>
+                </div>
+                <div>
+                  <dt>Storage</dt>
+                  <dd>Browser local storage</dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+
+          <div class="auth-note">
+            <v-icon icon="mdi-shield-lock-outline" size="18" />
+            <p>
+              Your session is managed by Supabase Auth. Signing out clears it from this browser and
+              returns you to secure access.
+            </p>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
 </template>

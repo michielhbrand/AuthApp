@@ -154,3 +154,20 @@ Dates use ISO 8601. Status values are proposed, accepted, superseded, or depreca
   without a conventional type are ignored by semantic-release. Release versions come from
   Git tags rather than `package.json`. The release workflow needs `contents: write` (and
   issue/PR write for the GitHub plugin) but does not deploy the site.
+
+## ADR-013: Orbital Direction A as the locked design system
+
+- **Date:** 2026-11-04
+- **Status:** Accepted
+- **Context:** Five UI directions were prototyped in both light and dark modes in
+  `design/ui-directions.html`. The product needs one coherent, calm, professional visual
+  language that future agents can apply consistently to auth and protected pages.
+- **Decision:** Select Direction A / Orbital. Implement its tokens in
+  `src/styles/orbital.css`, its Vuetify themes in `src/plugins/vuetify.ts`, and its shared
+  brand and auth layout in `src/components`. Document the exact palette, typography,
+  geometry, component recipes, dual-mode behavior, accessibility rules, and extension
+  checklist in `docs/DESIGN_SYSTEM.md`. Follow the operating system color scheme by default.
+- **Consequences:** Orbital is the only canonical direction. The other four explorations are
+  historical and must not be mixed into product UI. New pages and components must use the
+  shared tokens and helpers rather than one-off styles. UI changes must be reviewed in both
+  light and dark mode, and the design document must stay aligned with the implementation.

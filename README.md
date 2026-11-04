@@ -13,6 +13,7 @@ frontend is deployed to GitHub Pages with GitHub Actions.
 - Vue 3 + TypeScript + Vite
 - Vue Router and Pinia
 - Vuetify 4 (MIT) with MDI icons
+- Manrope + IBM Plex Mono, self-hosted with Fontsource
 - Supabase Auth (`@supabase/supabase-js`)
 - Vitest, ESLint, Oxlint, Prettier
 - GitHub Actions and GitHub Pages
@@ -29,6 +30,20 @@ frontend is deployed to GitHub Pages with GitHub Actions.
 
 Public sign-ups are disabled. Administrators can add users directly or invite them from the
 Supabase dashboard; invited users finish at `/set-password`.
+
+## Design system
+
+The locked visual system is Direction A / **Orbital**: a calm, precise interface with a cobalt
+signal, soft geometry, Manrope typography, and a restrained orbital motif. Light and dark
+themes follow the operating system preference.
+
+- Canonical rules: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)
+- Token and layout implementation: `src/styles/orbital.css`
+- Vuetify themes: `src/plugins/vuetify.ts`
+- Design exploration: `design/ui-directions.html`
+
+Use the shared `BrandMark` and `AuthShell` components and the Orbital tokens for any new UI.
+Do not add colors, fonts, radii, or motifs from the other design directions.
 
 ## Prerequisites
 
@@ -216,15 +231,19 @@ src/
   lib/auth-link.ts         Detects invite/recovery links before Supabase consumes them
   stores/auth.ts           Session state, sign-in, sign-out, password setup
   router/index.ts          Routes and authentication guard
+  components/AuthShell.vue Shared Orbital auth layout
+  components/BrandMark.vue AuthApp brand lockup
   views/LoginView.vue      Login form
   views/SetPasswordView.vue Invite and password update form
   views/DashboardView.vue  Protected session details
-  plugins/vuetify.ts       Vuetify setup
+  styles/orbital.css       Orbital tokens and shared page styles
+  plugins/vuetify.ts       Vuetify themes and component defaults
 scripts/
   postbuild.mjs            GitHub Pages 404 fallback and .nojekyll
   validate-env.mjs         Deploy-time environment validation
 supabase/config.toml       Local Supabase configuration
-docs/                      Architecture and decision records
+design/ui-directions.html  UI direction exploration
+docs/                      Architecture, design system, and decision records
 ```
 
 ## Security notes
@@ -242,6 +261,7 @@ docs/                      Architecture and decision records
 
 - [AGENTS.md](AGENTS.md) — commands, conventions, and constraints
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — runtime and deployment architecture
+- [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) — locked Orbital UI rules
 - [docs/DECISIONS.md](docs/DECISIONS.md) — architecture decision records
 
 ## License

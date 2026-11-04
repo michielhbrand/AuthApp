@@ -22,6 +22,24 @@ Build time:
 GitHub Actions secrets -> Vite env -> bundled publishable key + URL -> GitHub Pages
 ```
 
+## Frontend design system
+
+Direction A / Orbital is the locked visual system. `docs/DESIGN_SYSTEM.md` is the canonical
+rule set; the selected reference is `design/ui-directions.html#orbital`.
+
+- `src/styles/orbital.css` defines light and dark tokens, typography, layout primitives,
+  panels, fields, buttons, status badges, and the orbital motif.
+- `src/plugins/vuetify.ts` registers the matching `orbitalLight` and `orbitalDark` themes
+  and Vuetify component defaults.
+- `src/App.vue` follows the operating system color scheme and switches the Vuetify theme
+  when `prefers-color-scheme` changes.
+- `src/components/BrandMark.vue` owns the AuthApp lockup. `src/components/AuthShell.vue`
+  owns the shared login and password-setup layout.
+- Fonts are self-hosted with `@fontsource-variable/manrope` and `@fontsource/ibm-plex-mono`.
+  There are no runtime font requests.
+- Views must use the shared tokens and components rather than page-specific colors, radii,
+  fonts, or orbital motifs.
+
 ## Runtime auth lifecycle
 
 1. `src/main.ts` creates the app, installs Pinia, and resolves the auth store.

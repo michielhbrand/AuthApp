@@ -1,7 +1,8 @@
 # AGENTS.md
 
-Instructions for agents working in this repository. Read this file and
-`docs/ARCHITECTURE.md` before changing auth, routing, build, or deployment behavior.
+Instructions for agents working in this repository. Read this file,
+`docs/ARCHITECTURE.md`, and `docs/DESIGN_SYSTEM.md` before changing auth, routing, build,
+deployment, or UI behavior.
 
 ## Purpose
 
@@ -61,10 +62,15 @@ npm run build
 - `src/stores/auth.ts` — owns session state, initialization, sign-in, password setup, and
   sign-out.
 - `src/router/index.ts` — routes and the auth guard.
+- `src/components/AuthShell.vue` — shared Orbital layout for login and password setup.
+- `src/components/BrandMark.vue` — the only application brand lockup.
 - `src/views/LoginView.vue` — login form and validation.
 - `src/views/SetPasswordView.vue` — invite and password update form.
 - `src/views/DashboardView.vue` — protected session details.
-- `src/plugins/vuetify.ts` — Vuetify configuration.
+- `src/styles/orbital.css` — locked design tokens, layout primitives, and Vuetify styling.
+- `src/plugins/vuetify.ts` — Orbital light/dark Vuetify themes and component defaults.
+- `design/ui-directions.html` — reference exploration; Direction A / Orbital is selected.
+- `docs/DESIGN_SYSTEM.md` — canonical UI rules and component recipes.
 - `vite.config.ts` — production base `/AuthApp/`, Vuetify auto-import, aliases.
 - `scripts/postbuild.mjs` — copies `index.html` to `404.html` and writes `.nojekyll`.
 - `.github/workflows/ci.yml` — checks on pull requests and pushes to `main`.
@@ -82,8 +88,13 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
 - Invite and recovery links arrive with a `type` in the URL hash or query. Preserve the
   detection in `src/lib/auth-link.ts`; do not let the login redirect bypass
   `/set-password`.
+- Use the locked Direction A / Orbital design system in `docs/DESIGN_SYSTEM.md`. Reuse its
+  tokens and shared components; do not introduce colors, fonts, radii, gradients, or motifs
+  from the other design directions.
 - Use Vuetify 4 components and MDI icon names. Do not upgrade to a non-MIT UI major without
   reviewing its license.
+- Keep light and dark mode working. The app follows `prefers-color-scheme`; new UI must use
+  Orbital tokens and be checked in both modes.
 - Use Conventional Commits for commit messages and PR titles. `semantic-release` uses them
   to choose patch/minor/major versions; non-conventional commits do not create releases.
 - Use the `@/` alias for imports from `src/`.
@@ -133,5 +144,6 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
 
 ## Documentation rule
 
-Any change to auth flow, environment variables, deployment, routing, or the UI library must
-update the relevant files in `docs/` and this file when conventions change.
+Any change to auth flow, environment variables, deployment, routing, the UI library, or the
+Orbital design system must update the relevant files in `docs/` and this file when
+conventions change. Keep `docs/DESIGN_SYSTEM.md` aligned with the tokens and components.
