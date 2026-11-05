@@ -1,0 +1,1249 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hiring pipeline: step columns with role navigation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --canvas: #e9e7f1;
+        --board: #fbfaff;
+        --side: #f4f2fa;
+        --soft: #f2f0f9;
+        --ink: #26203a;
+        --mute: #6e6a82;
+        --line: #dcd8e8;
+        --warn: #b5483a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--board);
+        color: var(--ink);
+        font:
+          15px/1.5 'Hanken Grotesk',
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      h1,
+      h2,
+      h3,
+      .sc,
+      .idx {
+        font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+        letter-spacing: -0.015em;
+      }
+      h1 {
+        font-size: 28px;
+        font-weight: 800;
+        line-height: 1.15;
+        margin: 0;
+      }
+      h2 {
+        font-size: 18px;
+        font-weight: 700;
+        margin: 0;
+      }
+      h3 {
+        font-size: 15px;
+        font-weight: 700;
+        margin: 0;
+      }
+      p {
+        margin: 0;
+      }
+      button,
+      input {
+        font: inherit;
+        color: inherit;
+      }
+      :focus-visible {
+        outline: 2px solid var(--ink);
+        outline-offset: 2px;
+      }
+
+      /* Top line */
+      .topline {
+        padding: 18px 32px;
+        background: var(--canvas);
+        border-bottom: 1px solid #d3cfe2;
+      }
+      .topline h1 {
+        font-size: 20px;
+      }
+      .topline p {
+        color: var(--mute);
+        font-size: 14px;
+        margin-top: 4px;
+        max-width: 78ch;
+      }
+
+      /* App shell */
+      .app {
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr);
+      }
+
+      /* Sidebar: role list */
+      .side {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: var(--side);
+        border-right: 1px solid var(--line);
+      }
+      .side-head {
+        display: grid;
+        gap: 12px;
+        padding: 20px 18px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .side-head .sub {
+        font-size: 13px;
+        color: var(--mute);
+      }
+      .search {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+        font-size: 14px;
+      }
+      .filters {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        padding: 5px 11px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: #fff;
+        font-size: 13px;
+        cursor: pointer;
+      }
+      .chip[aria-pressed='true'] {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: #fff;
+      }
+      .rlist {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 6px 8px 24px;
+      }
+      .group {
+        margin-top: 8px;
+      }
+      .group h3 {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 10px 10px 4px;
+        font-size: 13px;
+        color: var(--mute);
+      }
+      .rrow {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        column-gap: 8px;
+        row-gap: 2px;
+        width: 100%;
+        padding: 10px 12px 12px;
+        border: 0;
+        border-radius: 10px;
+        background: none;
+        text-align: left;
+        cursor: pointer;
+      }
+      .rrow:hover {
+        background: rgba(38, 32, 58, 0.05);
+      }
+      .rrow[aria-current='true'] {
+        background: var(--board);
+        box-shadow: inset 3px 0 0 var(--ink);
+      }
+      .rtitle {
+        grid-column: 1;
+        grid-row: 1;
+        font-weight: 600;
+        font-size: 14.5px;
+        line-height: 1.3;
+      }
+      .rsub {
+        grid-column: 1;
+        grid-row: 2;
+        font-size: 12.5px;
+        color: var(--mute);
+      }
+      .late {
+        grid-column: 2;
+        grid-row: 2;
+        align-self: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--warn);
+        white-space: nowrap;
+      }
+      .rbar {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        display: flex;
+        height: 5px;
+        margin-top: 8px;
+        border-radius: 3px;
+        overflow: hidden;
+        background: var(--line);
+      }
+      .rbar i {
+        display: block;
+        height: 100%;
+      }
+      .rbar i + i {
+        border-left: 1px solid var(--side);
+      }
+      .side-empty {
+        padding: 20px 12px;
+        color: var(--mute);
+        font-size: 14px;
+      }
+
+      /* Main: board */
+      .main {
+        min-width: 0;
+      }
+      .board-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 20px;
+        flex-wrap: wrap;
+        padding: 26px 32px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+      .meta {
+        color: var(--mute);
+        margin-top: 6px;
+      }
+      .role-nav {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .role-nav .mute {
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .btn {
+        padding: 7px 14px;
+        border: 1px solid var(--ink);
+        border-radius: 999px;
+        background: var(--board);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .btn:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .btn.solid {
+        background: var(--ink);
+        color: #fff;
+      }
+      .btn.ghost {
+        border-color: transparent;
+        background: none;
+        padding: 6px 10px;
+      }
+      .btn.warn {
+        color: var(--warn);
+      }
+      .menu-btn,
+      .menu-close {
+        display: none;
+      }
+      .side-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .grow {
+        flex: 1;
+        min-width: 0;
+      }
+      .mute {
+        color: var(--mute);
+      }
+      .who {
+        font-weight: 600;
+        line-height: 1.25;
+      }
+      .src {
+        font-size: 13px;
+        color: var(--mute);
+      }
+      .sc {
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      .over {
+        color: var(--warn);
+        font-weight: 600;
+      }
+      .idx {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 1.5px solid var(--ink);
+        display: inline-grid;
+        place-items: center;
+        font-size: 12.5px;
+        font-weight: 700;
+        flex: none;
+      }
+      .av {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        display: inline-grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #fff;
+        flex: none;
+      }
+      .col-empty {
+        color: var(--mute);
+        font-size: 13.5px;
+        padding: 8px 2px;
+      }
+      .empty {
+        padding: 72px 32px;
+      }
+      .empty h1 {
+        font-size: 22px;
+      }
+      .empty p {
+        margin: 8px 0 18px;
+        color: var(--mute);
+      }
+
+      /* Step columns */
+      .cols-wrap {
+        overflow-x: auto;
+      }
+      .cols {
+        display: grid;
+        grid-template-columns: repeat(var(--n), minmax(230px, 1fr));
+        min-width: calc(var(--n) * 246px);
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        min-height: 440px;
+        border-right: 1px solid var(--line);
+      }
+      .col:last-child {
+        border-right: 0;
+      }
+      .col-h {
+        padding: 18px 16px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .col-h .row {
+        margin-bottom: 6px;
+      }
+      .col-h p {
+        font-size: 13px;
+        color: var(--mute);
+      }
+      .col-b {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+        background: var(--soft);
+      }
+      .card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .card.flagged {
+        box-shadow: inset 3px 0 0 var(--warn);
+      }
+      .card .sc {
+        margin-left: auto;
+        font-size: 17px;
+      }
+      .days {
+        margin: 10px 0;
+        font-size: 13px;
+        color: var(--mute);
+      }
+      .card-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .card-actions .btn {
+        white-space: normal;
+        text-align: center;
+        line-height: 1.3;
+        font-size: 13px;
+        padding: 7px 12px;
+      }
+      .more {
+        margin-top: 10px;
+        font-size: 13px;
+      }
+      .more summary {
+        cursor: pointer;
+        color: var(--mute);
+      }
+      .more-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .more-list .btn {
+        font-size: 13px;
+        padding: 5px 10px;
+      }
+
+      /* Closed candidates */
+      .closed {
+        border-top: 1px solid var(--line);
+      }
+      .closed summary {
+        cursor: pointer;
+        padding: 16px 32px;
+        font-weight: 600;
+      }
+      .closed-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        border-top: 1px solid var(--line);
+      }
+      .closed-col {
+        padding: 16px 32px;
+      }
+      .closed-col + .closed-col {
+        border-left: 1px solid var(--line);
+      }
+      .closed-col h3 {
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        margin-bottom: 6px;
+      }
+      .closed-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 0;
+        border-top: 1px solid var(--soft);
+      }
+
+      @media (max-width: 900px) {
+        .topline {
+          padding: 16px 20px;
+        }
+        .app {
+          grid-template-columns: 1fr;
+        }
+        .side {
+          position: fixed;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          width: min(340px, 92vw);
+          height: auto;
+          z-index: 30;
+          visibility: hidden;
+          transform: translateX(-105%);
+          transition:
+            transform 0.2s ease,
+            visibility 0.2s;
+          box-shadow: 8px 0 32px rgba(38, 32, 58, 0.18);
+        }
+        .app.menu-open .side {
+          visibility: visible;
+          transform: none;
+        }
+        .app.menu-open::before {
+          content: '';
+          position: fixed;
+          inset: 0;
+          background: rgba(38, 32, 58, 0.35);
+          z-index: 25;
+        }
+        .menu-btn,
+        .menu-close {
+          display: inline-flex;
+        }
+        .board-head {
+          padding: 20px;
+        }
+        .empty {
+          padding: 40px 20px;
+        }
+        .closed summary,
+        .closed-col {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+        .closed-col + .closed-col {
+          border-left: 0;
+          border-top: 1px solid var(--line);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .side {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topline">
+      <h1>Hiring pipeline</h1>
+      <p>
+        Step columns for each role. Search or filter the list, then move between roles with the
+        buttons, the arrow keys in the search box, or the [ and ] keys. Press / to search.
+      </p>
+    </header>
+
+    <div class="app">
+      <aside class="side" aria-label="Roles">
+        <div class="side-head">
+          <div class="side-title">
+            <div>
+              <h2>Open roles</h2>
+              <p class="sub" id="side-count"></p>
+            </div>
+            <button class="btn ghost menu-close" data-act="menu">Close</button>
+          </div>
+          <input
+            class="search"
+            id="q"
+            type="search"
+            placeholder="Search roles or teams"
+            aria-label="Search roles"
+            autocomplete="off"
+          />
+          <div class="filters" id="filters"></div>
+          <p class="sub">
+            Bars show candidates by step. Darker segments are further along the process.
+          </p>
+        </div>
+        <div class="rlist" id="rlist" data-scroll="rlist"></div>
+      </aside>
+      <main class="main" id="main"></main>
+    </div>
+
+    <script>
+      /* ---------- Sample data: each role has its own steps ---------- */
+      const DEPTS = [
+        'Engineering',
+        'Design',
+        'Analytics',
+        'Sales',
+        'Operations',
+        'Customer success',
+      ]
+
+      // Each step is [name, target days]. Hired and rejected are outcomes, not steps.
+      const SPECS = [
+        {
+          title: 'Senior Frontend Engineer',
+          dept: 'Engineering',
+          open: 2,
+          size: 7,
+          steps: [
+            ['Applied', 2],
+            ['Recruiter screen', 3],
+            ['Technical interview', 5],
+            ['System design', 4],
+            ['Offer', 5],
+          ],
+        },
+        {
+          title: 'Backend Engineer',
+          dept: 'Engineering',
+          open: 1,
+          size: 6,
+          steps: [
+            ['Applied', 2],
+            ['Recruiter screen', 3],
+            ['Coding test', 4],
+            ['Technical interview', 5],
+            ['Offer', 5],
+          ],
+        },
+        {
+          title: 'Engineering Manager',
+          dept: 'Engineering',
+          open: 1,
+          size: 4,
+          steps: [
+            ['Applied', 3],
+            ['Recruiter screen', 3],
+            ['Leadership interview', 5],
+            ['Panel interview', 5],
+            ['Offer', 5],
+          ],
+        },
+        {
+          title: 'DevOps Engineer',
+          dept: 'Engineering',
+          open: 1,
+          size: 5,
+          steps: [
+            ['Applied', 2],
+            ['Phone screen', 3],
+            ['Infrastructure exercise', 5],
+            ['Technical interview', 5],
+            ['Offer', 5],
+          ],
+        },
+        {
+          title: 'Product Designer',
+          dept: 'Design',
+          open: 1,
+          size: 6,
+          steps: [
+            ['Applied', 2],
+            ['Portfolio review', 4],
+            ['Design exercise', 6],
+            ['Panel interview', 5],
+            ['Offer', 5],
+          ],
+        },
+        {
+          title: 'UX Researcher',
+          dept: 'Design',
+          open: 1,
+          size: 5,
+          steps: [
+            ['Applied', 2],
+            ['Portfolio review', 4],
+            ['Research exercise', 6],
+            ['Panel interview', 5],
+            ['Offer', 5],
+          ],
+        },
+        {
+          title: 'Data Analyst',
+          dept: 'Analytics',
+          open: 1,
+          size: 8,
+          steps: [
+            ['Applied', 2],
+            ['Recruiter screen', 3],
+            ['SQL assessment', 4],
+            ['Case interview', 5],
+            ['Final panel', 5],
+            ['Offer', 5],
+          ],
+        },
+        {
+          title: 'Data Scientist',
+          dept: 'Analytics',
+          open: 2,
+          size: 6,
+          steps: [
+            ['Applied', 2],
+            ['Recruiter screen', 3],
+            ['Take-home project', 6],
+            ['Technical interview', 5],
+            ['Final panel', 5],
+            ['Offer', 5],
+          ],
+        },
+        {
+          title: 'Account Executive',
+          dept: 'Sales',
+          open: 3,
+          size: 6,
+          steps: [
+            ['Applied', 2],
+            ['Phone screen', 3],
+            ['Role play', 4],
+            ['Final interview', 5],
+            ['Offer', 5],
+          ],
+        },
+        {
+          title: 'Sales Development Representative',
+          dept: 'Sales',
+          open: 4,
+          size: 9,
+          steps: [
+            ['Applied', 1],
+            ['Phone screen', 2],
+            ['Cold call test', 3],
+            ['Final interview', 4],
+            ['Offer', 4],
+          ],
+        },
+        {
+          title: 'Operations Coordinator',
+          dept: 'Operations',
+          open: 1,
+          size: 4,
+          steps: [
+            ['Applied', 2],
+            ['Phone screen', 3],
+            ['Skills test', 4],
+            ['Panel interview', 5],
+            ['Offer', 5],
+          ],
+        },
+        {
+          title: 'Customer Success Manager',
+          dept: 'Customer success',
+          open: 1,
+          size: 5,
+          steps: [
+            ['Applied', 2],
+            ['Phone screen', 3],
+            ['Scenario call', 4],
+            ['Final interview', 5],
+            ['Offer', 5],
+          ],
+        },
+        {
+          title: 'Support Lead',
+          dept: 'Customer success',
+          open: 1,
+          size: 3,
+          steps: [
+            ['Applied', 2],
+            ['Phone screen', 3],
+            ['Scenario call', 4],
+            ['Panel interview', 5],
+            ['Offer', 5],
+          ],
+        },
+      ]
+
+      const ROLES = SPECS.map((s, i) => ({
+        id: 'r' + (i + 1),
+        title: s.title,
+        dept: s.dept,
+        open: s.open,
+        size: s.size,
+        steps: s.steps.map(([name, target], k) => ({ key: 's' + k, name, target })),
+      }))
+
+      const ORDERED = ROLES.slice().sort(
+        (a, b) => DEPTS.indexOf(a.dept) - DEPTS.indexOf(b.dept) || a.title.localeCompare(b.title),
+      )
+
+      // Seeded random number generator, so the sample data is the same on every load
+      function mulberry32(a) {
+        return function () {
+          a = (a + 0x6d2b79f5) | 0
+          let t = a
+          t = Math.imul(t ^ (t >>> 15), t | 1)
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+        }
+      }
+      const rand = mulberry32(2026)
+      const pick = (arr) => arr[Math.floor(rand() * arr.length)]
+      const between = (lo, hi) => lo + Math.floor(rand() * (hi - lo + 1))
+
+      const FIRST = [
+        'Amara',
+        'Liam',
+        'Sofia',
+        'Daniel',
+        'Priya',
+        'Owen',
+        'Lena',
+        'Kwame',
+        'Mei',
+        'Jonas',
+        'Noor',
+        'Ethan',
+        'Zara',
+        'Marco',
+        'Hana',
+        'Tomás',
+        'Aisha',
+        'Ravi',
+        'Clara',
+        'Jamal',
+        'Yuki',
+        'Lucas',
+        'Nadia',
+        'Kofi',
+        'Ingrid',
+        'Mateo',
+        'Leah',
+        'Samuel',
+        'Farah',
+        'Theo',
+      ]
+      const LAST = [
+        'Okafor',
+        'Chen',
+        'Rossi',
+        'Mensah',
+        'Raman',
+        'Price',
+        'Fischer',
+        'Asante',
+        'Lin',
+        'Berg',
+        'Haddad',
+        'Brooks',
+        'Idowu',
+        'Silva',
+        'Kim',
+        'Vidal',
+        'Hassan',
+        'Iyer',
+        'Moreau',
+        'Reid',
+        'Tanaka',
+        'Novak',
+        'Farouk',
+        'Quinn',
+        'Lindqvist',
+        'Ortega',
+        'Adler',
+        'Brandt',
+        'Pereira',
+        'Weber',
+      ]
+      const SOURCES = ['LinkedIn', 'Referral', 'Careers site', 'Indeed', 'Agency']
+
+      // status: active | hired | rejected. step: the role's step key the candidate is in.
+      // days: days in the current step. applied: days since application.
+      const APPS = []
+      const used = new Set()
+      ROLES.forEach((r) => {
+        const n = r.steps.length
+        for (let k = 0; k < r.size; k++) {
+          let name
+          do {
+            name = pick(FIRST) + ' ' + pick(LAST)
+          } while (used.has(name))
+          used.add(name)
+          const idx = Math.floor(Math.pow(rand(), 1.4) * n) // skews toward earlier steps
+          const step = r.steps[idx]
+          const roll = rand()
+          let status = 'active'
+          if (idx === n - 1 && roll < 0.3) status = 'hired'
+          else if (roll > 0.88) status = 'rejected'
+          APPS.push({
+            id: APPS.length + 1,
+            name,
+            role: r.id,
+            step: step.key,
+            status,
+            score: between(56, 96),
+            days: rand() < 0.2 ? step.target + between(1, 4) : between(0, step.target),
+            applied: between(1, 30),
+            source: pick(SOURCES),
+          })
+        }
+      })
+
+      /* ---------- State ---------- */
+      const S = {
+        role: 'r1',
+        filter: 'all',
+        q: '',
+        open: new Set(),
+        closedOpen: false,
+        menu: false,
+      }
+
+      /* ---------- Helpers ---------- */
+      const ROLE = (id) => ROLES.find((r) => r.id === id)
+      const stepOf = (r, key) => r.steps.find((s) => s.key === key)
+      const stepPos = (r, key) => r.steps.findIndex((s) => s.key === key)
+      const lastKey = (r) => r.steps[r.steps.length - 1].key
+      const nextKey = (a) => {
+        const r = ROLE(a.role),
+          i = stepPos(r, a.step)
+        return i < r.steps.length - 1 ? r.steps[i + 1].key : null
+      }
+      const isOver = (a) => a.days > stepOf(ROLE(a.role), a.step).target
+      const dayLabel = (n) => (n === 1 ? '1 day' : `${n} days`)
+      const inStep = (r, key) =>
+        APPS.filter((a) => a.role === r.id && a.status === 'active' && a.step === key)
+      const activeIn = (r) => APPS.filter((a) => a.role === r.id && a.status === 'active')
+      const closedIn = (r, status) => APPS.filter((a) => a.role === r.id && a.status === status)
+      const lateCount = (r) => activeIn(r).filter(isOver).length
+      const moveTo = (a, key) => {
+        a.step = key
+        a.status = 'active'
+        a.days = 0
+        S.open.delete(a.id)
+      }
+      const ini = (n) =>
+        n
+          .split(' ')
+          .map((p) => p[0])
+          .join('')
+      const hue = (n) => [...n].reduce((s, c) => s + c.charCodeAt(0), 0) % 360
+      const av = (a) =>
+        `<span class="av" style="background:hsl(${hue(a.name)} 28% 44%)" aria-hidden="true">${ini(a.name)}</span>`
+      const shade = (k, n) =>
+        `rgba(38,32,58,${(0.22 + 0.68 * (k / Math.max(1, n - 1))).toFixed(2)})`
+
+      /* ---------- Which roles are visible, and which one is open ---------- */
+      function visibleRoles() {
+        const q = S.q.trim().toLowerCase()
+        return ORDERED.filter(
+          (r) =>
+            (S.filter === 'all' || lateCount(r) > 0) &&
+            (!q || `${r.title} ${r.dept}`.toLowerCase().includes(q)),
+        )
+      }
+
+      // If the open role is filtered out, open the first visible role instead
+      function syncRole() {
+        const vis = visibleRoles()
+        if (vis.length && !vis.some((r) => r.id === S.role)) S.role = vis[0].id
+      }
+
+      function nextRoleId(dir) {
+        const vis = visibleRoles()
+        const i = vis.findIndex((r) => r.id === S.role)
+        const target = vis[i + dir]
+        return target ? target.id : null
+      }
+
+      /* ---------- Card and closed candidates ---------- */
+      function card(a, r) {
+        const nxt = nextKey(a)
+        const over = isOver(a)
+        const others = r.steps
+          .filter((s) => s.key !== a.step)
+          .map(
+            (s) =>
+              `<button class="btn ghost" data-act="move" data-id="${a.id}" data-val="${s.key}">${s.name}</button>`,
+          )
+          .join('')
+        const main = nxt
+          ? `<button class="btn" data-act="adv" data-id="${a.id}">Advance to ${stepOf(r, nxt).name}</button>`
+          : `<button class="btn solid" data-act="hire" data-id="${a.id}">Mark hired</button>`
+        return `<article class="card ${over ? 'flagged' : ''}">
+    <div class="row">
+      ${av(a)}
+      <div class="grow"><div class="who">${a.name}</div><div class="src">${a.source}</div></div>
+      <span class="sc">${a.score}</span>
+    </div>
+    <p class="days ${over ? 'over' : ''}">${a.days === 0 ? 'Entered this step today' : `${dayLabel(a.days)} in step`}${over ? ', over target' : ''}. Applied ${dayLabel(a.applied)} ago.</p>
+    <div class="card-actions">${main}</div>
+    <details class="more" data-id="${a.id}" ${S.open.has(a.id) ? 'open' : ''}>
+      <summary>Move or reject</summary>
+      <div class="more-list">
+        ${others}
+        <button class="btn ghost warn" data-act="reject" data-id="${a.id}">Reject</button>
+      </div>
+    </details>
+  </article>`
+      }
+
+      function closedRow(a) {
+        const r = ROLE(a.role)
+        return `<div class="closed-row">
+    ${av(a)}
+    <div class="grow"><div class="who">${a.name}</div><div class="src">Last step: ${stepOf(r, a.step).name}</div></div>
+    <button class="btn ghost" data-act="reopen" data-id="${a.id}">Reopen</button>
+  </div>`
+      }
+
+      function closedBlock(r) {
+        const hired = closedIn(r, 'hired')
+        const rejected = closedIn(r, 'rejected')
+        const col = (title, list) => `<div class="closed-col">
+    <h3>${title} <span class="mute">${list.length}</span></h3>
+    ${list.map((a) => closedRow(a)).join('') || '<p class="mute">None yet.</p>'}
+  </div>`
+        return `<details class="closed" ${S.closedOpen ? 'open' : ''}>
+    <summary>Closed candidates. ${hired.length} hired, ${rejected.length} rejected.</summary>
+    <div class="closed-grid">${col('Hired', hired)}${col('Rejected', rejected)}</div>
+  </details>`
+      }
+
+      /* ---------- Renderers ---------- */
+      function renderFilters() {
+        const withAttention = ROLES.filter((r) => lateCount(r) > 0).length
+        return `
+    <button class="chip" data-act="filter" data-val="all" aria-pressed="${S.filter === 'all'}">All roles</button>
+    <button class="chip" data-act="filter" data-val="attention" aria-pressed="${S.filter === 'attention'}">Needs attention ${withAttention}</button>`
+      }
+
+      function renderList() {
+        const vis = visibleRoles()
+        if (!vis.length) return '<p class="side-empty">No roles match.</p>'
+        return DEPTS.map((d) => {
+          const items = vis.filter((r) => r.dept === d)
+          if (!items.length) return ''
+          return `<div class="group">
+      <h3>${d}<span class="mute">${items.length}</span></h3>
+      ${items
+        .map((r) => {
+          const late = lateCount(r)
+          const bar = r.steps
+            .map((s, k) => {
+              const n = inStep(r, s.key).length
+              return n
+                ? `<i style="flex:${n};background:${shade(k, r.steps.length)}" title="${s.name}: ${n}"></i>`
+                : ''
+            })
+            .join('')
+          return `<button class="rrow" data-act="role" data-val="${r.id}" aria-current="${S.role === r.id}">
+          <span class="rtitle">${r.title}</span>
+          <span class="rsub">${r.open} open, ${activeIn(r).length} active</span>
+          ${late ? `<span class="late">${late} over target</span>` : ''}
+          <span class="rbar" aria-hidden="true">${bar}</span>
+        </button>`
+        })
+        .join('')}
+    </div>`
+        }).join('')
+      }
+
+      function renderBoard() {
+        const vis = visibleRoles()
+        if (!vis.length) {
+          return `<div class="empty">
+      <h1>No roles match these filters</h1>
+      <p>Try a different search, or show every role.</p>
+      <button class="btn solid" data-act="reset">Show all roles</button>
+    </div>`
+        }
+        const r = ROLE(S.role)
+        const i = vis.findIndex((x) => x.id === r.id)
+        const active = activeIn(r).length
+        const late = lateCount(r)
+        const columns = r.steps
+          .map((s, k) => {
+            const list = inStep(r, s.key).sort((x, y) => y.score - x.score)
+            return `<section class="col" aria-label="${s.name}">
+      <header class="col-h">
+        <div class="row"><span class="idx">${k + 1}</span><h3>${s.name}</h3></div>
+        <p>Target ${s.target} days. ${list.length} ${list.length === 1 ? 'candidate' : 'candidates'}.</p>
+      </header>
+      <div class="col-b">${list.map((a) => card(a, r)).join('') || '<p class="col-empty">No one in this step.</p>'}</div>
+    </section>`
+          })
+          .join('')
+        return `
+    <header class="board-head">
+      <div>
+        <h1>${r.title}</h1>
+        <p class="meta">${r.dept}. ${r.open} open ${r.open === 1 ? 'position' : 'positions'}. ${active} active ${active === 1 ? 'candidate' : 'candidates'}. ${late ? `${late} ${late === 1 ? 'candidate' : 'candidates'} over target.` : 'Nobody over target.'}</p>
+      </div>
+      <nav class="role-nav" aria-label="Move between roles">
+        <button class="btn menu-btn" data-act="menu">Open roles</button>
+        <button class="btn" data-act="prev" ${i <= 0 ? 'disabled' : ''}>Previous role</button>
+        <span class="mute">${i + 1} of ${vis.length}</span>
+        <button class="btn" data-act="next" ${i >= vis.length - 1 ? 'disabled' : ''}>Next role</button>
+      </nav>
+    </header>
+    <div class="cols-wrap" data-scroll="cols"><div class="cols" style="--n:${r.steps.length}">${columns}</div></div>
+    ${closedBlock(r)}`
+      }
+
+      /* ---------- Rendering with scroll positions kept ---------- */
+      const SLOT = {
+        filters: document.getElementById('filters'),
+        list: document.getElementById('rlist'),
+        main: document.getElementById('main'),
+      }
+      const APP = document.querySelector('.app')
+      let lastRole = null
+      let scrollToSelected = false
+
+      function render() {
+        const keep = {}
+        document.querySelectorAll('[data-scroll]').forEach((el) => {
+          keep[el.dataset.scroll] = { x: el.scrollLeft, y: el.scrollTop }
+        })
+        syncRole()
+        const sameRole = S.role === lastRole
+        SLOT.filters.innerHTML = renderFilters()
+        SLOT.list.innerHTML = renderList()
+        SLOT.main.innerHTML = renderBoard()
+        // The role list always keeps its place; the columns only keep theirs on the same role
+        document.querySelectorAll('[data-scroll]').forEach((el) => {
+          const k = keep[el.dataset.scroll]
+          if (!k) return
+          if (el.dataset.scroll === 'rlist' || sameRole) {
+            el.scrollLeft = k.x
+            el.scrollTop = k.y
+          }
+        })
+        lastRole = S.role
+        APP.classList.toggle('menu-open', S.menu)
+        if (scrollToSelected) {
+          const selected = SLOT.list.querySelector('.rrow[aria-current="true"]')
+          if (selected) selected.scrollIntoView({ block: 'nearest' })
+          scrollToSelected = false
+        }
+      }
+
+      /* ---------- Search box, keys, and clicks ---------- */
+      const searchEl = document.getElementById('q')
+
+      searchEl.addEventListener('input', () => {
+        S.q = searchEl.value
+        render()
+      })
+
+      searchEl.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault()
+          const id = nextRoleId(e.key === 'ArrowDown' ? 1 : -1)
+          if (id) {
+            S.role = id
+            scrollToSelected = true
+            render()
+          }
+        } else if (e.key === 'Escape' && searchEl.value) {
+          searchEl.value = ''
+          S.q = ''
+          render()
+        }
+      })
+
+      document.addEventListener('keydown', (e) => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return
+        const tag = document.activeElement ? document.activeElement.tagName : ''
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+        if (e.key === '/') {
+          e.preventDefault()
+          searchEl.focus()
+          searchEl.select()
+        } else if (e.key === 'Escape' && S.menu) {
+          S.menu = false
+        } else if (e.key === '[' || e.key === ']') {
+          const id = nextRoleId(e.key === ']' ? 1 : -1)
+          if (id) {
+            S.role = id
+            scrollToSelected = true
+            render()
+          }
+        }
+      })
+
+      document.addEventListener('click', (e) => {
+        // A click on the dimmed backdrop (drawn by .app::before) closes the role list
+        if (e.target === APP) {
+          if (S.menu) {
+            S.menu = false
+            render()
+          }
+          return
+        }
+        const el = e.target.closest('[data-act]')
+        if (!el) return
+        const { act, val } = el.dataset
+        const id = Number(el.dataset.id)
+        const a = APPS.find((x) => x.id === id)
+
+        switch (act) {
+          case 'role':
+            S.role = val
+            S.menu = false
+            break
+          case 'menu':
+            S.menu = !S.menu
+            break
+          case 'filter':
+            S.filter = val
+            break
+          case 'reset':
+            S.filter = 'all'
+            S.q = ''
+            searchEl.value = ''
+            break
+          case 'prev':
+          case 'next': {
+            const nid = nextRoleId(act === 'next' ? 1 : -1)
+            if (nid) {
+              S.role = nid
+              scrollToSelected = true
+            }
+            break
+          }
+          case 'adv': {
+            const n = nextKey(a)
+            if (n) moveTo(a, n)
+            break
+          }
+          case 'move':
+            moveTo(a, val)
+            break
+          case 'hire':
+            a.status = 'hired'
+            S.open.delete(a.id)
+            break
+          case 'reject':
+            a.status = 'rejected'
+            S.open.delete(a.id)
+            break
+          case 'reopen':
+            a.status = 'active'
+            break
+        }
+        render()
+      })
+
+      // Remember which "Move or reject" panels and the closed list are open, so re-rendering keeps them
+      document.addEventListener(
+        'toggle',
+        (e) => {
+          const d = e.target
+          if (d.matches('details.more')) {
+            const id = Number(d.dataset.id)
+            if (d.open) S.open.add(id)
+            else S.open.delete(id)
+          } else if (d.matches('details.closed')) {
+            S.closedOpen = d.open
+          }
+        },
+        true,
+      )
+
+      /* ---------- Start ---------- */
+      document.getElementById('side-count').textContent =
+        `${ROLES.length} roles, ${ROLES.reduce((n, r) => n + r.open, 0)} open positions`
+      render()
+    </script>
+  </body>
+</html>

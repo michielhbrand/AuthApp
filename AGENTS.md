@@ -6,10 +6,12 @@ deployment, or UI behavior.
 
 ## Purpose
 
-AuthApp is a deliberately small Vue 3 + Supabase authentication demo. It is hosted on
-GitHub Pages and exists to demonstrate a login screen, admin invitations that let users
-choose a password, persisted sessions, a protected page, and sign-out. Keep it focused; do
-not add unrelated product features.
+TeamBuilder is a Vue 3 + Supabase hiring pipeline workspace. It is hosted on GitHub Pages
+and exists to demonstrate a login screen, admin invitations that let users choose a
+password, persisted sessions, a protected hiring portal, and sign-out. The portal has an
+overview, role boards grouped by department, a step-column pipeline for each role, and an
+account page. Board data is deterministic in-memory dummy data; Supabase is used only for
+authentication. Keep it focused; do not add unrelated product features.
 
 ## Commands
 
@@ -61,17 +63,32 @@ npm run build
   the URL.
 - `src/stores/auth.ts` — owns session state, initialization, sign-in, password setup, and
   sign-out.
+- `src/types/pipeline.ts` — board, step, candidate, and summary types.
+- `src/data/boards.ts` — deterministic seeded dummy boards; no network or database access.
+- `src/lib/pipeline.ts` — pure pipeline helpers for steps, over-target checks, summaries,
+  and department grouping.
+- `src/stores/boards.ts` — in-memory board state and candidate actions.
 - `src/router/index.ts` — routes and the auth guard.
+- `src/components/AppShell.vue` — top-bar navigation and shared layout for protected pages.
 - `src/components/AuthShell.vue` — shared Orbital layout for login and password setup.
 - `src/components/BrandMark.vue` — the only application brand lockup.
+- `src/components/BoardList.vue` — searchable boards grouped by department.
+- `src/components/BoardColumn.vue` — one pipeline step column.
+- `src/components/CandidateCard.vue` — candidate summary and pipeline actions.
+- `src/components/PipelineBar.vue` — per-step candidate progress bar.
 - `src/views/LoginView.vue` — login form and validation.
 - `src/views/SetPasswordView.vue` — invite and password update form.
-- `src/views/DashboardView.vue` — protected session details.
-- `src/styles/orbital.css` — locked design tokens, layout primitives, and Vuetify styling.
+- `src/views/OverviewView.vue` — post-login hiring overview.
+- `src/views/BoardsView.vue` — all role boards grouped by department.
+- `src/views/BoardView.vue` — step-column pipeline for one role.
+- `src/views/AccountView.vue` — protected session and identity details.
+- `src/styles/orbital.css` — locked design tokens, layout primitives, board styling, and
+  Vuetify styling.
 - `src/plugins/vuetify.ts` — Orbital light/dark Vuetify themes and component defaults.
 - `design/ui-directions.html` — reference exploration; Direction A / Orbital is selected.
+- `design/hiring-pipeline-step-columns.html` — board concept reference; adapt it to Orbital.
 - `docs/DESIGN_SYSTEM.md` — canonical UI rules and component recipes.
-- `vite.config.ts` — production base `/AuthApp/`, Vuetify auto-import, aliases.
+- `vite.config.ts` — production base `/TeamBuilder/`, Vuetify auto-import, aliases.
 - `scripts/postbuild.mjs` — copies `index.html` to `404.html` and writes `.nojekyll`.
 - `.github/workflows/ci.yml` — checks on pull requests and pushes to `main`.
 - `.github/workflows/deploy.yml` — builds with secrets and deploys to GitHub Pages.
@@ -84,6 +101,10 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
 
 - Use Vue single-file components with `<script setup lang="ts">`.
 - Keep auth state in the Pinia store. Components should not call `supabase.auth` directly.
+- Keep board state in `src/stores/boards.ts`. Components read from the store and call its
+  actions instead of mutating dummy data directly.
+- Board data is deliberately in-memory and resets on reload. Do not connect it to Supabase
+  without a migration, RLS policies, and a product decision.
 - Keep the Supabase client singleton in `src/lib/supabase.ts`.
 - Invite and recovery links arrive with a `type` in the URL hash or query. Preserve the
   detection in `src/lib/auth-link.ts`; do not let the login redirect bypass
@@ -105,13 +126,13 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
 
 ## Deployment constraints
 
-- The site is a GitHub Pages project site at `https://michielhbrand.github.io/AuthApp/`.
-- Production `base` must remain `/AuthApp/` unless the repository is renamed. If it changes,
-  update `vite.config.ts`, Supabase redirect URLs, the README, and the docs.
-- The cloud Supabase **Site URL** must be `https://michielhbrand.github.io/AuthApp/`.
+- The site is a GitHub Pages project site at `https://michielhbrand.github.io/TeamBuilder/`.
+- Production `base` must remain `/TeamBuilder/` unless the repository is renamed again. If
+  it changes, update `vite.config.ts`, Supabase redirect URLs, the README, and the docs.
+- The cloud Supabase **Site URL** must be `https://michielhbrand.github.io/TeamBuilder/`.
   Invitation emails build their link from it. If it points at `localhost:3000`, recipients
   cannot accept invites.
-- Do not remove the `404.html` fallback; it is what makes `/AuthApp/dashboard` work on a
+- Do not remove the `404.html` fallback; it is what makes `/TeamBuilder/boards` work on a
   hard refresh.
 - `.github/workflows/deploy.yml` is the only production deploy path. Keep Pages permissions
   (`pages: write`, `id-token: write`) and the `github-pages` environment.

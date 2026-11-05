@@ -31,7 +31,7 @@ async function submit(): Promise<void> {
     return
   }
 
-  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard'
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/overview'
   await router.replace(redirect)
 }
 </script>
@@ -40,7 +40,7 @@ async function submit(): Promise<void> {
   <AuthShell
     eyebrow="Secure access"
     title="Welcome back."
-    subtitle="Sign in to review your account, active session, and access details."
+    subtitle="Sign in to manage open roles, candidate pipelines, and interview steps."
   >
     <div class="panel-head">
       <div>

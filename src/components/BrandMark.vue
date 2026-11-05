@@ -4,7 +4,7 @@ withDefaults(
     context?: string
   }>(),
   {
-    context: 'Identity console',
+    context: 'Hiring workspace',
   },
 )
 </script>
@@ -15,7 +15,7 @@ withDefaults(
       <v-icon icon="mdi-orbit" size="22" />
     </span>
     <span class="brand-copy">
-      <span class="brand-name">AuthApp</span>
+      <span class="brand-name">TeamBuilder</span>
       <span v-if="context" class="brand-context">{{ context }}</span>
     </span>
   </div>

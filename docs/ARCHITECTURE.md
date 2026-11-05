@@ -2,10 +2,16 @@
 
 ## Overview
 
-AuthApp is a static Vue 3 single-page application. All authentication is performed directly
-against Supabase Auth from the browser using the publishable key. There is no custom backend,
-no server-side session, and no database access yet. Administrators provision users in
-Supabase and can invite them by email; invited users choose their own password.
+TeamBuilder is a static Vue 3 single-page application. All authentication is performed
+directly against Supabase Auth from the browser using the publishable key. There is no custom
+backend, no server-side session, and no database access yet. Administrators provision users
+in Supabase and can invite them by email; invited users choose their own password.
+
+The protected hiring portal is a board-based workspace. A board represents one open role,
+boards are grouped by department, and each board has its own ordered steps and candidates.
+All board, step, and candidate data is deterministic dummy data in `src/data/boards.ts` and
+lives only in Pinia memory for the current browser session. Pipeline actions mutate that
+in-memory store and reset on reload. Supabase is not used for board data.
 
 ```text
 Browser
@@ -32,10 +38,14 @@ rule set; the selected reference is `design/ui-directions.html#orbital`.
 - `src/plugins/vuetify.ts` registers the matching `orbitalLight` and `orbitalDark` themes
   and Vuetify component defaults. The app starts in `orbitalLight`.
 - `src/components/ThemeToggle.vue` switches between `orbitalLight` and `orbitalDark` with
-  `theme.change`. It renders in the shared auth shell and the dashboard top bar.
+  `theme.change`. It renders in the shared auth shell and the app top bar.
 - `src/App.vue` provides the default app shell.
-- `src/components/BrandMark.vue` owns the AuthApp lockup. `src/components/AuthShell.vue`
-  owns the shared login and password-setup layout.
+- `src/components/BrandMark.vue` owns the TeamBuilder lockup. `src/components/AuthShell.vue`
+  owns the shared login and password-setup layout. `src/components/AppShell.vue` owns the
+  top-bar navigation for Overview, Boards, and Account.
+- `src/components/BoardList.vue`, `BoardColumn.vue`, `CandidateCard.vue`, and
+  `PipelineBar.vue` implement the board UI. `design/hiring-pipeline-step-columns.html` is
+  the structural concept reference; its palette and fonts are not used.
 - Fonts are self-hosted with `@fontsource-variable/manrope` and `@fontsource/ibm-plex-mono`.
   There are no runtime font requests.
 - Views must use the shared tokens and components rather than page-specific colors, radii,
@@ -50,14 +60,16 @@ rule set; the selected reference is `design/ui-directions.html#orbital`.
    `session` in place.
 4. Only after initialization does `main.ts` install the router and mount the app. This keeps
    the first navigation from racing the session lookup.
-5. `router.beforeEach` checks `to.meta.requiresAuth`. Unauthenticated visitors to
-   `/dashboard` are redirected to `/` with a `redirect` query parameter.
+5. `router.beforeEach` checks `to.meta.requiresAuth`. Unauthenticated visitors to a
+   protected route are redirected to `/` with a `redirect` query parameter.
 6. `LoginView.vue` validates the form and calls `auth.signIn(email, password)`, which calls
    `supabase.auth.signInWithPassword()`.
 7. On success the store stores the session, and the view navigates to the requested redirect
-   or `/dashboard`.
-8. `DashboardView.vue` reads the session from the store and displays non-sensitive session
-   details. Sign-out calls `auth.signOut()`, clears the session, and returns to `/`.
+   or `/overview`.
+8. `OverviewView.vue` is the post-login landing page. `BoardsView.vue` lists boards grouped
+   by department, `BoardView.vue` renders one board's step columns, and `AccountView.vue`
+   shows non-sensitive session details. Sign-out calls `auth.signOut()`, clears the session,
+   and returns to `/`.
 9. Invitation and recovery links arrive with a `type` in the URL hash or query.
    `src/lib/auth-link.ts` reads that type before `supabase-js` consumes and clears the URL.
    The store sets `passwordSetupRequired` for `invite` and `recovery` links.
@@ -65,7 +77,7 @@ rule set; the selected reference is `design/ui-directions.html#orbital`.
     `/set-password`. Supabase Auth has already exchanged the link for a session.
 11. `SetPasswordView.vue` validates the new password and calls
     `supabase.auth.updateUser({ password })` through `auth.setPassword()`. On success the
-    flag is cleared and the user continues to `/dashboard`. If the link is expired or
+    flag is cleared and the user continues to `/overview`. If the link is expired or
     missing, the page shows the error and points back to sign-in.
 
 ## State ownership
@@ -86,16 +98,34 @@ The Supabase client is a singleton in `src/lib/supabase.ts`. It reads
 `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` at module load and refuses to start
 without them. It also rejects a `sb_secret_` key defensively.
 
+## Board data
+
+`src/stores/boards.ts` is the single source of truth for the hiring portal:
+
+- `boards` — the current in-memory board list, initialized from `createBoards()`.
+- derived `groups`, `orderedBoards`, `summaries`, `totals`, and `needsAttention`.
+- `boardById`, `summaryById`.
+- `advanceCandidate`, `moveCandidate`, `hireCandidate`, `rejectCandidate`,
+  `reopenCandidate`, and `reset`.
+
+`src/data/boards.ts` generates deterministic dummy data with a seeded random generator. One
+board represents one hiring role. `src/types/pipeline.ts` defines the domain types, and
+`src/lib/pipeline.ts` contains pure helpers for step lookup, over-target checks, next-step
+navigation, department grouping, and summaries. Components read from the store and call its
+actions; they do not mutate board data directly. The store is intentionally not persisted
+and not connected to Supabase.
+
 ## Routing and GitHub Pages
 
 - History mode: `createWebHistory(import.meta.env.BASE_URL)`.
-- Dev base: `/`; production base: `/AuthApp/`.
-- Routes: `/` (login), `/set-password` (invite/recovery or password update), `/dashboard`
-  (protected), catch-all redirect to `/`.
+- Dev base: `/`; production base: `/TeamBuilder/`.
+- Routes: `/` (login), `/set-password` (invite/recovery or password update), `/overview`
+  (protected landing), `/boards` (protected), `/boards/:boardId` (protected), `/account`
+  (protected), `/dashboard` (redirect to `/account`), catch-all redirect to `/`.
 - GitHub Pages does not rewrite unknown paths. `scripts/postbuild.mjs` copies the built
   `index.html` to `404.html` and writes `.nojekyll`. A direct request to
-  `/AuthApp/dashboard` receives the 404 document, which boots Vue Router with the original
-  URL and renders the dashboard.
+  `/TeamBuilder/boards` receives the 404 document, which boots Vue Router with the original
+  URL and renders the boards page.
 - The 404 response status is intentional and harmless for this demo. Do not replace the
   fallback with hash routing unless pretty URLs are abandoned.
 
@@ -112,7 +142,7 @@ push to main
      -> actions/configure-pages
      -> actions/upload-pages-artifact
      -> actions/deploy-pages
-  -> https://michielhbrand.github.io/AuthApp/
+  -> https://michielhbrand.github.io/TeamBuilder/
 
 push to main (in parallel)
   -> release.yml
@@ -155,13 +185,19 @@ can be newer than the latest release.
   release-worthy type. The deploy still succeeds; rewrite the commit or create a release
   manually only when recovering.
 - Pages direct navigation: served through `404.html`; if the fallback is removed, refreshing
-  `/AuthApp/dashboard` returns a GitHub 404 page.
-- Renamed repository: production base and Supabase redirect URLs must change together.
+  `/TeamBuilder/boards` returns a GitHub 404 page.
+- Renamed repository: production base and Supabase redirect URLs must change together. The
+  current base `/TeamBuilder/` assumes the repository is `michielhbrand/TeamBuilder`. Deploy
+  only after the repository rename, Pages URL, and Supabase Site URL agree.
 
 ## Extension guidance
 
+- To make board data persistent, add tables and migrations for boards, steps, candidates,
+  and status history, enable RLS, write `anon`/`authenticated` policies, and replace the
+  seeded data source in `src/stores/boards.ts` with Supabase queries. Keep the pure helpers
+  in `src/lib/pipeline.ts` and keep the secret key server-side.
 - If a database table is added, create a migration in `supabase/migrations`, enable RLS, and
-  add policies for `anon` and `authenticated`. Keep the secret key server-side; this static
+  add policies for the `anon` and `authenticated`. Keep the secret key server-side; this static
   app must never use it.
 - Password recovery links already use the same `/set-password` flow. If magic links are
   added, extend the Supabase redirect allow-list for both local and Pages origins and add

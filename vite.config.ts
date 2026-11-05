@@ -6,7 +6,7 @@ import vuetify from 'vite-plugin-vuetify'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
 export default defineConfig(({ mode }) => ({
-  base: mode === 'production' ? '/AuthApp/' : '/',
+  base: mode === 'production' ? '/TeamBuilder/' : '/',
   plugins: [vue(), vuetify({ autoImport: true }), vueDevTools()],
   resolve: {
     alias: {

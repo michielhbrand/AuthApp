@@ -2,7 +2,7 @@
 
 ## Status
 
-Direction A / **Orbital** is the locked visual system for AuthApp. The product owner selected
+Direction A / **Orbital** is the locked visual system for TeamBuilder. The product owner selected
 it on 2026-11-04 from the five options in `design/ui-directions.html`. Orbital is the only
 canonical direction; the other four remain historical exploration and must not be mixed into
 new work.
@@ -24,15 +24,21 @@ scale, Orbital can read as a generic SaaS theme. Use the motif and the tokens de
 
 ## Source of truth
 
-| Concern            | File                             |
-| ------------------ | -------------------------------- |
-| CSS tokens         | `src/styles/orbital.css`         |
-| Vuetify themes     | `src/plugins/vuetify.ts`         |
-| Fonts              | `src/main.ts` and `package.json` |
-| Brand lockup       | `src/components/BrandMark.vue`   |
-| Auth page shell    | `src/components/AuthShell.vue`   |
-| Theme toggle       | `src/components/ThemeToggle.vue` |
-| Visual exploration | `design/ui-directions.html`      |
+| Concern            | File                                       |
+| ------------------ | ------------------------------------------ |
+| CSS tokens         | `src/styles/orbital.css`                   |
+| Vuetify themes     | `src/plugins/vuetify.ts`                   |
+| Fonts              | `src/main.ts` and `package.json`           |
+| Brand lockup       | `src/components/BrandMark.vue`             |
+| Auth page shell    | `src/components/AuthShell.vue`             |
+| App page shell     | `src/components/AppShell.vue`              |
+| Board list         | `src/components/BoardList.vue`             |
+| Board column       | `src/components/BoardColumn.vue`           |
+| Candidate card     | `src/components/CandidateCard.vue`         |
+| Progress bar       | `src/components/PipelineBar.vue`           |
+| Theme toggle       | `src/components/ThemeToggle.vue`           |
+| Visual exploration | `design/ui-directions.html`                |
+| Board concept      | `design/hiring-pipeline-step-columns.html` |
 
 The prototype is a reference, not an application dependency. Production styling lives in the
 files above. Change the tokens there first; do not copy one-off hex values into views.
@@ -57,7 +63,7 @@ Role names are stable. Use the CSS variable rather than the hex value in compone
 | Signal soft | `--orbital-signal-soft` | `#E0F5F1` | `rgba(45,212,191,0.13)`  | Signal badge fills and status halo      |
 | Danger      | `--orbital-danger`      | `#B42318` | `#FDA4AF`                | Errors and destructive text             |
 | Danger soft | `--orbital-danger-soft` | `#FEECE9` | `rgba(253,164,175,0.12)` | Error fills                             |
-| Shadow      | `--orbital-shadow`      | soft navy | deep black               | Auth and dashboard panels               |
+| Shadow      | `--orbital-shadow`      | soft navy | deep black               | Auth and app panels                     |
 | Shadow soft | `--orbital-shadow-soft` | 2 px navy | 2 px black               | Stat cards and quiet surfaces           |
 
 Exact shadows:
@@ -112,8 +118,8 @@ Rules:
   `calc(100% - 40px)`; at `520px` or below use `calc(100% - 32px)`.
 - Auth card: maximum `460px`, panel padding `36px` desktop / `24px` tablet / `18-22px` phone.
 - Top bar: `88px` desktop, `76px` tablet.
-- Page padding: `64px 0 72px` for auth pages; `clamp(40px, 6vw, 72px) 0 80px` for the
-  dashboard.
+- Page padding: `64px 0 72px` for auth pages; `clamp(40px, 6vw, 72px) 0 80px` for protected
+  app pages.
 
 ## Orbital motif
 
@@ -155,15 +161,39 @@ Use `AuthShell` for `/` and `/set-password`.
 
 ### Protected pages
 
-Use the dashboard pattern:
+Use `AppShell` for `/overview`, `/boards`, `/boards/:boardId`, and `/account`.
 
-- `dashboard-topbar` with `BrandMark context="Flight deck"`, session badge, avatar, and
-  `ThemeToggle`.
+- `app-topbar` with `BrandMark context="Hiring workspace"`, the Overview / Boards / Account
+  navigation, `ThemeToggle`, and the avatar account menu.
 - Eyebrow plus display title, one paragraph, and the page-level action.
-- A three-card stat row for the most important current facts.
-- A two-column body: primary record panel and a narrower status/notes column.
-- At `1024px` the body becomes one column; the aside becomes two columns, then stacks at
-  `720px`.
+- The Overview page has a four-card stat row, an attention panel, and a department-load
+  panel. Both panels become one column at `1024px`.
+- The Account page keeps the existing three-card stat row and two-column identity/status
+  body.
+- At `920px` the top bar wraps: brand and actions on the first row, navigation on its own
+  row. Do not collapse the navigation into a hidden menu without a product decision.
+- At `720px` stat grids stack and the account aside stacks.
+
+### Boards
+
+Adapt the structure of `design/hiring-pipeline-step-columns.html` to Orbital. Do not copy
+that prototype's palette, gradients, or Bricolage/Hanken fonts.
+
+- `/boards` uses a search field, All roles / Needs attention filter chips, department
+  headings, and a responsive grid of board cards. Each card shows the role, open positions,
+  active candidates, over-target count, and a pipeline bar.
+- `/boards/:boardId` uses a two-column layout: a searchable board switcher grouped by
+  department and the step-column pipeline. At `1024px` the switcher moves above the board.
+- Step columns are a horizontal grid with a numbered step header, target days, candidate
+  count, and candidate cards. Columns use the surface-2 fill and hairline dividers.
+- Candidate cards use a 12 px radius, a token-only initials avatar, score, source, time in
+  step, and the primary advance/hire action. Move and reject actions sit in a disclosure.
+- Over-target candidates use the danger token on a left inset border and in the day label.
+  Never rely on the border color alone; the copy says "over target".
+- The closed-candidates disclosure uses two columns for hired and rejected, with a reopen
+  action. It stacks at `720px`.
+- Keyboard support mirrors the concept: `/` focuses board search, and `[` / `]` move to the
+  previous or next board.
 
 ## Components
 
@@ -219,8 +249,8 @@ class. Keep the rules attached to the field.
 ### Brand, avatar, and status
 
 - `BrandMark` is the only application identity lockup. It combines the accent square, the
-  `mdi-orbit` icon, `AuthApp`, and an uppercase mono context line.
-- Use `Identity console` on auth pages and `Flight deck` on the protected dashboard.
+  `mdi-orbit` icon, `TeamBuilder`, and an uppercase mono context line.
+- Use `Identity console` on auth pages and `Hiring workspace` on protected pages.
 - The avatar is a `38px` accent-soft circle with two initials. It is decorative; never make
   it the only way to identify the account.
 - Session status belongs in the top bar and in the session panel. The labels are
@@ -257,7 +287,8 @@ Check both modes for every UI change.
 
 ## Adding or changing UI
 
-1. Reuse `AuthShell`, `BrandMark`, and the tokenized classes before building anything new.
+1. Reuse `AppShell`, `AuthShell`, `BrandMark`, the board components, and the tokenized
+   classes before building anything new.
 2. If a new component is genuinely reusable, add it under `src/components` and style it with
    the existing tokens. Avoid page-specific copies of the same pattern.
 3. Use Vuetify 4 components and MDI icon names. Keep the global defaults in
@@ -274,4 +305,5 @@ Check both modes for every UI change.
 - Do not use arbitrary hex values, box shadows, gradients, or fonts in a view.
 - Do not add heavy illustration, glassmorphism, neon glow, or dense telemetry.
 - Do not restyle Vuetify into a different system; extend the Orbital tokens.
-- Do not add UI that is not part of the demo's auth purpose without a product decision.
+- Do not add UI that is not part of the TeamBuilder hiring workspace without a product
+  decision.

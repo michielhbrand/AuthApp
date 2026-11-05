@@ -1,11 +1,13 @@
-# AuthApp
+# TeamBuilder
 
-A small Vue 3 + Supabase authentication demo: email/password sign-in, invited users who
-choose their own password, persisted sessions, a protected dashboard, and sign-out. The
-frontend is deployed to GitHub Pages with GitHub Actions.
+A Vue 3 + Supabase hiring pipeline workspace: email/password sign-in, invited users who
+choose their own password, persisted sessions, a protected hiring portal, and sign-out. The
+portal has a pipeline overview, role boards grouped by department, a step-column board for
+each role, and an account page. The frontend is deployed to GitHub Pages with GitHub
+Actions. Board data is deterministic in-memory dummy data; Supabase is used only for auth.
 
-- **Live demo:** https://michielhbrand.github.io/AuthApp/
-- **Repository:** https://github.com/michielhbrand/AuthApp
+- **Live demo:** https://michielhbrand.github.io/TeamBuilder/
+- **Repository:** https://github.com/michielhbrand/TeamBuilder
 - **License:** [Apache-2.0](LICENSE)
 
 ## Stack
@@ -23,10 +25,15 @@ frontend is deployed to GitHub Pages with GitHub Actions.
 - A login screen backed by Supabase Auth
 - Admin invitations that let users choose their own password
 - Session persistence and automatic token refresh
-- A router guard that protects `/dashboard`
+- A router guard that protects the hiring portal
+- A pipeline overview at `/overview` with workload and attention summaries
+- Role boards grouped by department at `/boards`
+- A step-column pipeline for each role with candidate cards and over-target flags
+- Interactive in-memory candidate actions: advance, move, reject, hire, and reopen
+- An account page with non-sensitive session and identity details
 - Sign-out and redirect back to the login screen
 - Build-time environment injection from GitHub Actions secrets
-- A GitHub Pages SPA fallback so `/AuthApp/dashboard` survives a hard refresh
+- A GitHub Pages SPA fallback so `/TeamBuilder/boards` survives a hard refresh
 
 Public sign-ups are disabled. Administrators can add users directly or invite them from the
 Supabase dashboard; invited users finish at `/set-password`.
@@ -41,9 +48,12 @@ light mode and offers a top-bar toggle for dark mode.
 - Token and layout implementation: `src/styles/orbital.css`
 - Vuetify themes: `src/plugins/vuetify.ts`
 - Design exploration: `design/ui-directions.html`
+- Board concept reference: `design/hiring-pipeline-step-columns.html`
 
-Use the shared `BrandMark` and `AuthShell` components and the Orbital tokens for any new UI.
-Do not add colors, fonts, radii, or motifs from the other design directions.
+Use the shared `BrandMark`, `AuthShell`, and `AppShell` components and the Orbital tokens
+for any new UI. The board reference uses a different palette and type system; adapt its
+structure, not its styling. Do not add colors, fonts, radii, or motifs from the other design
+directions.
 
 ## Prerequisites
 
@@ -60,9 +70,9 @@ Do not add colors, fonts, radii, or motifs from the other design directions.
    - **Project URL**
    - **Publishable key** (`sb_publishable_...`)
 3. In **Authentication → URL Configuration**:
-   - Site URL: `https://michielhbrand.github.io/AuthApp/`
+   - Site URL: `https://michielhbrand.github.io/TeamBuilder/`
    - Redirect URLs: `http://localhost:5173/` and
-     `https://michielhbrand.github.io/AuthApp/`
+     `https://michielhbrand.github.io/TeamBuilder/`
 4. In **Authentication → Sign In / Providers → Email**, disable new user sign-ups.
 5. In **Authentication → Users**, either add a demo user with auto-confirm enabled or use
    **Invite user** so the recipient chooses their own password.
@@ -82,7 +92,8 @@ Do not add colors, fonts, radii, or motifs from the other design directions.
    npm run dev
    ```
 
-8. Sign in with the demo user. The login route is `/`; the protected page is `/dashboard`.
+8. Sign in with the demo user. The login route is `/`; the protected landing page is
+   `/overview`.
 
 > The publishable key is designed to be public. Never put a Supabase secret key
 > (`sb_secret_...`) or a legacy `service_role` key in a `VITE_*` variable.
@@ -92,15 +103,15 @@ Do not add colors, fonts, radii, or motifs from the other design directions.
 Invite users from **Authentication → Users → Invite user**. Supabase sends an email whose
 link returns the user to the project's **Site URL** with an invite token. The app detects
 the invite, opens `/set-password`, and calls `supabase.auth.updateUser({ password })` to save
-the password they choose. After saving, they land on `/dashboard`.
+the password they choose. After saving, they land on `/overview`.
 
 The invitation link is built from the cloud project's **Site URL**, not from this
 repository. If an invite opens `http://localhost:3000` or another wrong host, fix it in
 **Authentication → URL Configuration**:
 
-- Site URL: `https://michielhbrand.github.io/AuthApp/`
+- Site URL: `https://michielhbrand.github.io/TeamBuilder/`
 - Redirect URLs: `http://localhost:5173/` and
-  `https://michielhbrand.github.io/AuthApp/`
+  `https://michielhbrand.github.io/TeamBuilder/`
 
 Then send a new invitation; previously sent links keep the old destination. Local Studio
 invitations use the local Site URL from `supabase/config.toml` and appear in Mailpit at
@@ -171,14 +182,14 @@ Supabase URL and publishable key.
 The deploy workflow reads two repository secrets:
 
 ```bash
-gh secret set VITE_SUPABASE_URL --repo michielhbrand/AuthApp
-gh secret set VITE_SUPABASE_PUBLISHABLE_KEY --repo michielhbrand/AuthApp
+gh secret set VITE_SUPABASE_URL --repo michielhbrand/TeamBuilder
+gh secret set VITE_SUPABASE_PUBLISHABLE_KEY --repo michielhbrand/TeamBuilder
 ```
 
 Paste the values at the prompts; avoid putting them in shell history. Verify with:
 
 ```bash
-gh secret list --repo michielhbrand/AuthApp
+gh secret list --repo michielhbrand/TeamBuilder
 ```
 
 ## Deployment
@@ -187,10 +198,11 @@ gh secret list --repo michielhbrand/AuthApp
   and pushes to `main`.
 - `deploy.yml` builds with the real secrets and deploys the `dist/` artifact to GitHub Pages
   on every push to `main` or manual dispatch.
-- The build `base` is `/AuthApp/` in production. If the repository is renamed, update the
-  base in `vite.config.ts`, the Pages URL in the Supabase redirect settings, and this README.
+- The build `base` is `/TeamBuilder/` in production. If the repository is renamed again,
+  update the base in `vite.config.ts`, the Pages URL in the Supabase redirect settings, and
+  this README.
 - `scripts/postbuild.mjs` copies `index.html` to `404.html` and writes `.nojekyll`. GitHub
-  Pages serves the copy for unknown paths, which lets Vue Router handle `/dashboard`.
+  Pages serves the copy for unknown paths, which lets Vue Router handle `/boards`.
 
 Enable Pages with **Settings → Pages → Source: GitHub Actions** if it is not already enabled.
 
@@ -215,7 +227,7 @@ Examples:
 
 ```text
 fix(auth): handle expired invite links
-feat(dashboard): show session expiry
+feat(boards): show candidate time in step
 feat(auth)!: require email confirmation
 ```
 
@@ -227,24 +239,37 @@ push does not warrant a release, the deployed site can be newer than the latest 
 
 ```text
 src/
-  lib/supabase.ts          Supabase client and environment validation
-  lib/auth-link.ts         Detects invite/recovery links before Supabase consumes them
-  stores/auth.ts           Session state, sign-in, sign-out, password setup
-  router/index.ts          Routes and authentication guard
-  components/AuthShell.vue Shared Orbital auth layout
-  components/BrandMark.vue AuthApp brand lockup
+  lib/supabase.ts           Supabase client and environment validation
+  lib/auth-link.ts          Detects invite/recovery links before Supabase consumes them
+  lib/pipeline.ts           Pure pipeline helpers and summaries
+  stores/auth.ts            Session state, sign-in, sign-out, password setup
+  stores/boards.ts          In-memory boards and candidate actions
+  data/boards.ts            Deterministic seeded dummy board data
+  types/pipeline.ts         Board, step, candidate, and summary types
+  router/index.ts           Routes and authentication guard
+  components/AppShell.vue   Top-bar navigation for protected pages
+  components/AuthShell.vue  Shared Orbital auth layout
+  components/BrandMark.vue  TeamBuilder brand lockup
+  components/BoardList.vue  Searchable boards grouped by department
+  components/BoardColumn.vue One pipeline step column
+  components/CandidateCard.vue Candidate summary and actions
+  components/PipelineBar.vue Per-step progress bar
   components/ThemeToggle.vue Light/dark mode toggle
-  views/LoginView.vue      Login form
+  views/LoginView.vue       Login form
   views/SetPasswordView.vue Invite and password update form
-  views/DashboardView.vue  Protected session details
-  styles/orbital.css       Orbital tokens and shared page styles
-  plugins/vuetify.ts       Vuetify themes and component defaults
+  views/OverviewView.vue    Post-login hiring overview
+  views/BoardsView.vue      All boards grouped by department
+  views/BoardView.vue       Step-column pipeline for one role
+  views/AccountView.vue     Protected session details
+  styles/orbital.css        Orbital tokens and shared page styles
+  plugins/vuetify.ts        Vuetify themes and component defaults
 scripts/
-  postbuild.mjs            GitHub Pages 404 fallback and .nojekyll
-  validate-env.mjs         Deploy-time environment validation
-supabase/config.toml       Local Supabase configuration
-design/ui-directions.html  UI direction exploration
-docs/                      Architecture, design system, and decision records
+  postbuild.mjs             GitHub Pages 404 fallback and .nojekyll
+  validate-env.mjs          Deploy-time environment validation
+supabase/config.toml        Local Supabase configuration
+design/ui-directions.html   UI direction exploration
+design/hiring-pipeline-step-columns.html  Board concept reference
+docs/                       Architecture, design system, and decision records
 ```
 
 ## Security notes
@@ -253,8 +278,9 @@ docs/                      Architecture, design system, and decision records
   by this project.
 - Sessions are stored in browser storage by `@supabase/supabase-js`. Treat the app as
   vulnerable to XSS and keep dependencies and content secure.
-- No database tables exist yet. If you add tables, enable Row Level Security and write
-  policies for the `anon` and `authenticated` roles.
+- No database tables exist yet. Board data is dummy data held in Pinia memory and resets on
+  reload. If you add tables, enable Row Level Security and write policies for the `anon` and
+  `authenticated` roles.
 - Sign-ups are disabled. Administrators create accounts or send invitations from the
   Supabase dashboard or local Studio.
 

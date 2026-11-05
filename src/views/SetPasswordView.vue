@@ -71,7 +71,7 @@ async function submit(): Promise<void> {
 
   success.value = true
   await new Promise((resolve) => setTimeout(resolve, 900))
-  await router.replace('/dashboard')
+  await router.replace('/overview')
 }
 </script>
 
@@ -96,7 +96,7 @@ async function submit(): Promise<void> {
 
     <template v-else>
       <v-alert v-if="success" class="mb-5" type="success">
-        Password saved. Taking you to the dashboard...
+        Password saved. Taking you to your hiring overview...
       </v-alert>
 
       <v-alert v-else-if="auth.error" class="mb-5" type="error">

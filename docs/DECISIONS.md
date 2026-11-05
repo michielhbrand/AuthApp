@@ -65,7 +65,7 @@ Dates use ISO 8601. Status values are proposed, accepted, superseded, or depreca
 ## ADR-006: GitHub Pages project site with history routing
 
 - **Date:** 2026-11-03
-- **Status:** Accepted
+- **Status:** Superseded by ADR-015
 - **Context:** The repository is `AuthApp`, so the free project site lives under
   `/AuthApp/`. GitHub Pages has no server-side SPA rewrite.
 - **Decision:** Set the production Vite base to `/AuthApp/`, use `createWebHistory`, and
@@ -187,3 +187,52 @@ Dates use ISO 8601. Status values are proposed, accepted, superseded, or depreca
 - **Consequences:** The theme no longer tracks the operating system; it is fixed to the toggle.
   ADR-013's dual-mode requirement still holds: every UI change is reviewed in both modes. The
   design system and architecture docs describe the toggle as the single theme source.
+
+## ADR-015: Rename AuthApp to TeamBuilder with the /TeamBuilder/ base path
+
+- **Date:** 2026-11-05
+- **Status:** Accepted
+- **Context:** The product moved from an authentication demo to a hiring pipeline workspace.
+  The old name and Pages path no longer described the app. The repository, package metadata,
+  production base, deployment URLs, and Supabase redirect allow-list all need to agree.
+- **Decision:** Rename the visible brand and package to TeamBuilder. Set the production Vite
+  base to `/TeamBuilder/`, target `https://michielhbrand.github.io/TeamBuilder/`, and update
+  package repository/homepage/bugs URLs, the local Supabase project id, the Supabase redirect
+  allow-list, and all documentation. The external GitHub repository rename and the cloud
+  Supabase Site URL change are operator steps that must happen with the deployment.
+- **Consequences:** The site will not resolve correctly if code is deployed before the GitHub
+  repository and Supabase URLs use TeamBuilder. Outstanding invitation emails still point at
+  the old Site URL and must be re-sent. Supersedes the `/AuthApp/` path in ADR-006.
+
+## ADR-016: Board-based hiring portal with deterministic in-memory data
+
+- **Date:** 2026-11-05
+- **Status:** Accepted
+- **Context:** The protected area should demonstrate a realistic hiring pipeline without
+  introducing database schema, RLS policies, or a data-loading phase. The design reference in
+  `design/hiring-pipeline-step-columns.html` models roles, ordered steps, candidates, target
+  days, and closed outcomes.
+- **Decision:** Create one board per hiring role, grouped by department. Port the concept to
+  Vue components and the Orbital design system. Generate deterministic dummy boards with a
+  seeded random generator in `src/data/boards.ts`, expose them through
+  `src/stores/boards.ts`, and keep pure pipeline logic in `src/lib/pipeline.ts`. Candidate
+  actions (advance, move, reject, hire, reopen) mutate Pinia memory only.
+- **Consequences:** The portal is immediately demonstrable with no backend work, and all
+  action state resets on reload. Making boards persistent later requires migrations, RLS
+  policies, and replacing the seeded data source. The prototype's palette and fonts are not
+  part of the design system.
+
+## ADR-017: App navigation and protected route structure
+
+- **Date:** 2026-11-05
+- **Status:** Accepted
+- **Context:** The old protected area was a single session dashboard. The portal needs a
+  landing overview, a boards index, individual role boards, and an account page.
+- **Decision:** Use a top-bar `AppShell` with Overview, Boards, and Account links. Protect
+  `/overview`, `/boards`, `/boards/:boardId`, and `/account`; send authenticated users from
+  `/` to `/overview`; redirect `/dashboard` to `/account` for old links; and keep the auth
+  guard and `/set-password` flow unchanged.
+- **Consequences:** The role switcher and pipeline stay inside the Boards section rather than
+  becoming app-level navigation. The top bar wraps on narrow screens instead of collapsing
+  into a hidden menu. Account retains the session-detail content that used to live at
+  `/dashboard`.

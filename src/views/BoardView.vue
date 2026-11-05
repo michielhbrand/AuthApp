@@ -1,0 +1,197 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import AppShell from '@/components/AppShell.vue'
+import BoardColumn from '@/components/BoardColumn.vue'
+import BoardList from '@/components/BoardList.vue'
+import {
+  candidatesInStep,
+  closedCandidates,
+  initials,
+  stepById,
+  summariseBoard,
+} from '@/lib/pipeline'
+import { useBoardsStore } from '@/stores/boards'
+import type { Candidate } from '@/types/pipeline'
+
+const route = useRoute()
+const router = useRouter()
+const store = useBoardsStore()
+
+const boardId = computed(() => String(route.params.boardId ?? ''))
+const board = computed(() => store.boardById(boardId.value))
+const summary = computed(() => (board.value ? summariseBoard(board.value) : undefined))
+const hired = computed(() => (board.value ? closedCandidates(board.value, 'hired') : []))
+const rejected = computed(() => (board.value ? closedCandidates(board.value, 'rejected') : []))
+
+const boardIndex = computed(() =>
+  store.orderedBoards.findIndex((item) => item.id === boardId.value),
+)
+const previous = computed(() =>
+  boardIndex.value > 0 ? store.orderedBoards[boardIndex.value - 1] : undefined,
+)
+const next = computed(() =>
+  boardIndex.value >= 0 ? store.orderedBoards[boardIndex.value + 1] : undefined,
+)
+
+function candidatesFor(stepId: string): Candidate[] {
+  return board.value ? candidatesInStep(board.value, stepId) : []
+}
+
+function goToBoard(id: string | undefined): void {
+  if (!id) {
+    return
+  }
+
+  void router.push({ name: 'board', params: { boardId: id } })
+}
+
+function lastStepName(candidate: Candidate): string {
+  if (!board.value) {
+    return ''
+  }
+
+  return stepById(board.value, candidate.stepId)?.name ?? ''
+}
+
+function onKeydown(event: KeyboardEvent): void {
+  if (event.metaKey || event.ctrlKey || event.altKey) {
+    return
+  }
+
+  const tag = document.activeElement?.tagName ?? ''
+
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+    return
+  }
+
+  if (event.key === '[') {
+    event.preventDefault()
+    goToBoard(previous.value?.id)
+  } else if (event.key === ']') {
+    event.preventDefault()
+    goToBoard(next.value?.id)
+  }
+}
+
+onMounted(() => document.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
+</script>
+
+<template>
+  <AppShell>
+    <div v-if="!board" class="board-empty">
+      <h2>Board not found.</h2>
+      <p>This role may have been removed or the link is incorrect.</p>
+      <v-btn color="primary" to="/boards">Back to boards</v-btn>
+    </div>
+
+    <div v-else class="board-detail-layout">
+      <aside class="board-sidebar" aria-label="Switch board">
+        <div class="board-sidebar__head">
+          <p class="mono-label">Switch board</p>
+          <p>Search roles or move through departments.</p>
+        </div>
+        <BoardList :groups="store.groups" :active-board-id="board.id" />
+      </aside>
+
+      <div class="board-detail-main">
+        <header class="page-heading board-heading">
+          <div>
+            <p class="eyebrow">{{ board.department }}</p>
+            <h1 class="page-title board-title">{{ board.title }}</h1>
+            <p class="lede">
+              {{ board.openPositions }}
+              {{ board.openPositions === 1 ? 'open position' : 'open positions' }}.
+              {{ summary?.active ?? 0 }} active
+              {{ summary?.active === 1 ? 'candidate' : 'candidates' }}.
+              <template v-if="summary?.overTarget">
+                {{ summary.overTarget }} over target.
+              </template>
+              <template v-else>Nobody over target.</template>
+            </p>
+          </div>
+
+          <nav class="board-nav" aria-label="Move between boards">
+            <v-btn
+              variant="outlined"
+              prepend-icon="mdi-arrow-left"
+              :disabled="!previous"
+              @click="goToBoard(previous?.id)"
+            >
+              Previous
+            </v-btn>
+            <span class="mono-label">{{ boardIndex + 1 }} / {{ store.orderedBoards.length }}</span>
+            <v-btn
+              variant="outlined"
+              append-icon="mdi-arrow-right"
+              :disabled="!next"
+              @click="goToBoard(next?.id)"
+            >
+              Next
+            </v-btn>
+          </nav>
+        </header>
+
+        <div class="board-columns-wrap">
+          <div class="board-columns" :style="{ '--columns': board.steps.length }">
+            <BoardColumn
+              v-for="(step, index) in board.steps"
+              :key="step.id"
+              :board="board"
+              :step="step"
+              :index="index"
+              :candidates="candidatesFor(step.id)"
+            />
+          </div>
+        </div>
+
+        <details class="closed-panel">
+          <summary>
+            Closed candidates. {{ hired.length }} hired, {{ rejected.length }} rejected.
+          </summary>
+
+          <div class="closed-grid">
+            <div class="closed-column">
+              <h3>
+                Hired <span>{{ hired.length }}</span>
+              </h3>
+              <p v-if="!hired.length" class="closed-empty">None yet.</p>
+              <div v-for="candidate in hired" :key="candidate.id" class="closed-row">
+                <span class="candidate-avatar candidate-avatar--small" aria-hidden="true">
+                  {{ initials(candidate.name) }}
+                </span>
+                <div class="closed-row__copy">
+                  <p class="candidate-name">{{ candidate.name }}</p>
+                  <p class="candidate-source">Last step: {{ lastStepName(candidate) }}</p>
+                </div>
+                <v-btn size="small" variant="text" @click="store.reopenCandidate(candidate.id)">
+                  Reopen
+                </v-btn>
+              </div>
+            </div>
+
+            <div class="closed-column">
+              <h3>
+                Rejected <span>{{ rejected.length }}</span>
+              </h3>
+              <p v-if="!rejected.length" class="closed-empty">None yet.</p>
+              <div v-for="candidate in rejected" :key="candidate.id" class="closed-row">
+                <span class="candidate-avatar candidate-avatar--small" aria-hidden="true">
+                  {{ initials(candidate.name) }}
+                </span>
+                <div class="closed-row__copy">
+                  <p class="candidate-name">{{ candidate.name }}</p>
+                  <p class="candidate-source">Last step: {{ lastStepName(candidate) }}</p>
+                </div>
+                <v-btn size="small" variant="text" @click="store.reopenCandidate(candidate.id)">
+                  Reopen
+                </v-btn>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </AppShell>
+</template>

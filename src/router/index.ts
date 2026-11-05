@@ -13,10 +13,32 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/SetPasswordView.vue'),
   },
   {
-    path: '/dashboard',
-    name: 'dashboard',
-    component: () => import('@/views/DashboardView.vue'),
+    path: '/overview',
+    name: 'overview',
+    component: () => import('@/views/OverviewView.vue'),
     meta: { requiresAuth: true },
+  },
+  {
+    path: '/boards',
+    name: 'boards',
+    component: () => import('@/views/BoardsView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/boards/:boardId',
+    name: 'board',
+    component: () => import('@/views/BoardView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/account',
+    name: 'account',
+    component: () => import('@/views/AccountView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/dashboard',
+    redirect: '/account',
   },
   {
     path: '/:pathMatch(.*)*',
@@ -44,7 +66,7 @@ router.beforeEach((to) => {
   }
 
   if (to.name === 'login' && auth.isAuthenticated) {
-    return { name: 'dashboard' }
+    return { name: 'overview' }
   }
 
   return true
