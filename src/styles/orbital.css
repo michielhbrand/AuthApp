@@ -87,13 +87,6 @@ body {
   min-height: 100dvh;
 }
 
-@media (prefers-color-scheme: dark) {
-  html,
-  body {
-    background: #07111f;
-  }
-}
-
 ::selection {
   background: var(--orbital-accent-soft);
   color: var(--orbital-accent-text);
@@ -168,6 +161,11 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+.theme-toggle {
+  width: 44px;
+  height: 44px;
 }
 
 .brand-lockup {

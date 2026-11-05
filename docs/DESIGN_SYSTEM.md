@@ -31,6 +31,7 @@ scale, Orbital can read as a generic SaaS theme. Use the motif and the tokens de
 | Fonts              | `src/main.ts` and `package.json` |
 | Brand lockup       | `src/components/BrandMark.vue`   |
 | Auth page shell    | `src/components/AuthShell.vue`   |
+| Theme toggle       | `src/components/ThemeToggle.vue` |
 | Visual exploration | `design/ui-directions.html`      |
 
 The prototype is a reference, not an application dependency. Production styling lives in the
@@ -147,7 +148,8 @@ Use `AuthShell` for `/` and `/set-password`.
 - The intro contains an eyebrow, page title, one short paragraph, and a three-cell readout.
 - At `720px` and below the readout is hidden so the form stays close to the top; the
   eyebrow, title, and paragraph remain. The layout becomes one column with the intro first.
-- Every auth page uses `BrandMark` and the `Secure access` status badge from the shell.
+- Every auth page uses `BrandMark`, the `Secure access` status badge, and the `ThemeToggle`
+  from the shell.
 - Auth forms use a panel heading, the fields, one primary full-width submit button, and one
   quiet note. Do not add social login, tabs, or extra actions without a product decision.
 
@@ -155,7 +157,8 @@ Use `AuthShell` for `/` and `/set-password`.
 
 Use the dashboard pattern:
 
-- `dashboard-topbar` with `BrandMark context="Flight deck"`, session badge, and avatar.
+- `dashboard-topbar` with `BrandMark context="Flight deck"`, session badge, avatar, and
+  `ThemeToggle`.
 - Eyebrow plus display title, one paragraph, and the page-level action.
 - A three-card stat row for the most important current facts.
 - A two-column body: primary record panel and a narrower status/notes column.
@@ -172,6 +175,14 @@ Use the dashboard pattern:
 - Text/ghost: accent text, no fill, no border. Use for navigation and cancellation.
 - Add MDI icons at `18-20px`; place trailing icons with `<v-icon end>`.
 - Loading state uses the Vuetify `loading` prop. Do not replace the label with a spinner.
+
+### Theme toggle
+
+- Use `ThemeToggle.vue`.
+- Render an outlined primary `v-btn` with `mdi-weather-sunny` or `mdi-weather-night`.
+- Toggle with `theme.change` between `orbitalLight` and `orbitalDark`.
+- The control is `44px` and uses a dynamic accessible label.
+- The default is light; the button switches to dark mode.
 
 ### Fields
 
@@ -219,14 +230,16 @@ class. Keep the rules attached to the field.
 
 Orbital is dual-mode by design.
 
-- `src/plugins/vuetify.ts` registers `orbitalLight` and `orbitalDark`.
-- `src/App.vue` follows the operating system with `prefers-color-scheme` and updates
-  `theme.global.name` when the system preference changes.
+- `src/plugins/vuetify.ts` registers `orbitalLight` and `orbitalDark`; the default theme is
+  `orbitalLight`.
+- `src/App.vue` provides the default app shell.
+- `src/components/ThemeToggle.vue` toggles between `orbitalLight` and `orbitalDark` with
+  `theme.change`.
 - `src/styles/orbital.css` defines token overrides on `.v-theme--orbitalLight` and
-  `.v-theme--orbitalDark`, plus a pre-hydration background for dark systems.
+  `.v-theme--orbitalDark`.
+- The UI starts in light mode. The manual toggle switches to dark mode and back to light.
 - Do not hardcode light-only colors in new components. Add or use a token.
-- Do not add a manual theme toggle unless the product owner asks for one. If one is added,
-  update this document and persist the choice.
+- Do not add another theme source unless the product owner asks for one.
 
 Check both modes for every UI change.
 

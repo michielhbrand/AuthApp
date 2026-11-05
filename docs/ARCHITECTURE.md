@@ -30,9 +30,10 @@ rule set; the selected reference is `design/ui-directions.html#orbital`.
 - `src/styles/orbital.css` defines light and dark tokens, typography, layout primitives,
   panels, fields, buttons, status badges, and the orbital motif.
 - `src/plugins/vuetify.ts` registers the matching `orbitalLight` and `orbitalDark` themes
-  and Vuetify component defaults.
-- `src/App.vue` follows the operating system color scheme and switches the Vuetify theme
-  when `prefers-color-scheme` changes.
+  and Vuetify component defaults. The app starts in `orbitalLight`.
+- `src/components/ThemeToggle.vue` switches between `orbitalLight` and `orbitalDark` with
+  `theme.change`. It renders in the shared auth shell and the dashboard top bar.
+- `src/App.vue` provides the default app shell.
 - `src/components/BrandMark.vue` owns the AuthApp lockup. `src/components/AuthShell.vue`
   owns the shared login and password-setup layout.
 - Fonts are self-hosted with `@fontsource-variable/manrope` and `@fontsource/ibm-plex-mono`.

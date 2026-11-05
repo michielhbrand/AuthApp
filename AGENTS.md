@@ -93,8 +93,8 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
   from the other design directions.
 - Use Vuetify 4 components and MDI icon names. Do not upgrade to a non-MIT UI major without
   reviewing its license.
-- Keep light and dark mode working. The app follows `prefers-color-scheme`; new UI must use
-  Orbital tokens and be checked in both modes.
+- Keep light and dark mode working. The app starts in light mode and switches with the
+  top-bar theme toggle; new UI must use Orbital tokens and be checked in both modes.
 - Use Conventional Commits for commit messages and PR titles. `semantic-release` uses them
   to choose patch/minor/major versions; non-conventional commits do not create releases.
 - Use the `@/` alias for imports from `src/`.

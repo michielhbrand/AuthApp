@@ -171,3 +171,19 @@ Dates use ISO 8601. Status values are proposed, accepted, superseded, or depreca
   historical and must not be mixed into product UI. New pages and components must use the
   shared tokens and helpers rather than one-off styles. UI changes must be reviewed in both
   light and dark mode, and the design document must stay aligned with the implementation.
+
+## ADR-014: Manual light/dark toggle instead of following the operating system
+
+- **Date:** 2026-11-04
+- **Status:** Accepted
+- **Context:** ADR-013 followed the operating system color scheme for the Orbital design
+  system. The product owner asked for a simple manual light/dark control that does not depend
+  on the visitor's system setting.
+- **Decision:** Default to the `orbitalLight` theme. Add `src/components/ThemeToggle.vue`, an
+  outlined primary button that calls `theme.change` to switch between `orbitalLight` and
+  `orbitalDark`, and render it in the shared `AuthShell` and the dashboard top bar. Remove the
+  `prefers-color-scheme` listener from `src/App.vue` and the dark pre-hydration background
+  from `src/styles/orbital.css`.
+- **Consequences:** The theme no longer tracks the operating system; it is fixed to the toggle.
+  ADR-013's dual-mode requirement still holds: every UI change is reviewed in both modes. The
+  design system and architecture docs describe the toggle as the single theme source.

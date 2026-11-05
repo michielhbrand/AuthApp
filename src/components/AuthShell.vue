@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import BrandMark from '@/components/BrandMark.vue'
 
 defineProps<{
@@ -15,11 +16,8 @@ defineProps<{
 
     <header class="page-topbar">
       <BrandMark />
-      <div class="topbar-status">
-        <span class="status-badge status-badge--signal">
-          <span class="status-dot" />
-          Secure access
-        </span>
+      <div class="topbar-actions">
+        <ThemeToggle />
       </div>
     </header>
 

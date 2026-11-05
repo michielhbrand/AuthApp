@@ -34,8 +34,8 @@ Supabase dashboard; invited users finish at `/set-password`.
 ## Design system
 
 The locked visual system is Direction A / **Orbital**: a calm, precise interface with a cobalt
-signal, soft geometry, Manrope typography, and a restrained orbital motif. Light and dark
-themes follow the operating system preference.
+signal, soft geometry, Manrope typography, and a restrained orbital motif. The app starts in
+light mode and offers a top-bar toggle for dark mode.
 
 - Canonical rules: [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)
 - Token and layout implementation: `src/styles/orbital.css`
@@ -233,6 +233,7 @@ src/
   router/index.ts          Routes and authentication guard
   components/AuthShell.vue Shared Orbital auth layout
   components/BrandMark.vue AuthApp brand lockup
+  components/ThemeToggle.vue Light/dark mode toggle
   views/LoginView.vue      Login form
   views/SetPasswordView.vue Invite and password update form
   views/DashboardView.vue  Protected session details

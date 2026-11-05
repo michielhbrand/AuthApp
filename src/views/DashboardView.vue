@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import BrandMark from '@/components/BrandMark.vue'
+import ThemeToggle from '@/components/ThemeToggle.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const auth = useAuthStore()
@@ -48,12 +49,7 @@ async function signOut(): Promise<void> {
     <header class="dashboard-topbar">
       <BrandMark context="Flight deck" />
       <div class="topbar-actions">
-        <span class="topbar-status">
-          <span class="status-badge status-badge--signal">
-            <span class="status-dot" />
-            Session active
-          </span>
-        </span>
+        <ThemeToggle />
         <span class="user-avatar" aria-hidden="true">{{ initials }}</span>
       </div>
     </header>

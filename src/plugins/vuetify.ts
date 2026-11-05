@@ -54,12 +54,9 @@ const orbitalDark: ThemeDefinition = {
   },
 }
 
-const prefersDark =
-  typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
-
 export default createVuetify({
   theme: {
-    defaultTheme: prefersDark ? 'orbitalDark' : 'orbitalLight',
+    defaultTheme: 'orbitalLight',
     themes: {
       orbitalLight,
       orbitalDark,
