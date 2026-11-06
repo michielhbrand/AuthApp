@@ -191,6 +191,10 @@ that prototype's palette, gradients, or Bricolage/Hanken fonts.
   count, and candidate cards. Columns use the surface-2 fill and hairline dividers.
 - Candidate cards use a 12 px radius, a token-only initials avatar, score, source, time in
   step, and the primary advance/hire action. Move and reject actions sit in a disclosure.
+- Candidate cards can be dragged one step left or right. While a card is held, only the
+  adjacent columns highlight with the accent token and accept the drop. The dragged card
+  fades its content but keeps its outline, and lifts and settles with a short transition.
+  Cards in the first and final steps can still move in the available direction.
 - Over-target candidates use the danger token on a left inset border and in the day label.
   Never rely on the border color alone; the copy says "over target".
 - The closed-candidates disclosure uses two columns for hired and rejected, with a reopen

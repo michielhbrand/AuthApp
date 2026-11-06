@@ -54,6 +54,11 @@ export function nextStep(board: Board, candidate: Candidate): PipelineStep | und
   return index >= 0 ? board.steps[index + 1] : undefined
 }
 
+export function previousStep(board: Board, candidate: Candidate): PipelineStep | undefined {
+  const index = board.steps.findIndex((step) => step.id === candidate.stepId)
+  return index > 0 ? board.steps[index - 1] : undefined
+}
+
 export function isInFinalStep(board: Board, candidate: Candidate): boolean {
   const index = board.steps.findIndex((step) => step.id === candidate.stepId)
   return index === board.steps.length - 1

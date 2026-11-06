@@ -2,16 +2,52 @@
 import CandidateCard from '@/components/CandidateCard.vue'
 import type { Board, Candidate, PipelineStep } from '@/types/pipeline'
 
-defineProps<{
+const props = defineProps<{
   board: Board
   step: PipelineStep
   index: number
   candidates: Candidate[]
+  dropTarget?: boolean
+  draggingCandidateId?: string
+  settlingCandidateId?: string
 }>()
+
+const emit = defineEmits<{
+  'drag-start': [candidate: Candidate]
+  'drag-end': []
+  drop: [stepId: string]
+}>()
+
+function onDragOver(event: DragEvent): void {
+  if (!props.dropTarget) {
+    return
+  }
+
+  event.preventDefault()
+
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+}
+
+function onDrop(event: DragEvent): void {
+  if (!props.dropTarget) {
+    return
+  }
+
+  event.preventDefault()
+  emit('drop', props.step.id)
+}
 </script>
 
 <template>
-  <section class="board-column" :aria-label="step.name">
+  <section
+    class="board-column"
+    :class="{ 'board-column--drop-target': dropTarget }"
+    :aria-label="step.name"
+    @dragover="onDragOver"
+    @drop="onDrop"
+  >
     <header class="board-column__head">
       <div class="board-column__title">
         <span class="step-index">{{ index + 1 }}</span>
@@ -29,6 +65,10 @@ defineProps<{
         :key="candidate.id"
         :board="board"
         :candidate="candidate"
+        :dragging="candidate.id === draggingCandidateId"
+        :settling="candidate.id === settlingCandidateId"
+        @drag-start="emit('drag-start', $event)"
+        @drag-end="emit('drag-end')"
       />
       <p v-if="!candidates.length" class="board-column__empty">No one in this step.</p>
     </div>

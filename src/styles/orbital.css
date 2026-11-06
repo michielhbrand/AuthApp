@@ -1303,6 +1303,17 @@ body {
   border-right: 0;
 }
 
+.board-column--drop-target {
+  background: var(--orbital-accent-soft);
+  outline: 2px solid var(--orbital-accent);
+  outline-offset: -2px;
+}
+
+.board-column--drop-target .board-column__head,
+.board-column--drop-target .board-column__body {
+  background: var(--orbital-accent-soft);
+}
+
 .board-column__head {
   border-bottom: 1px solid var(--orbital-line);
   padding: 16px;
@@ -1363,12 +1374,70 @@ body {
   padding: 12px;
   background: var(--orbital-surface);
   box-shadow: var(--orbital-shadow-soft);
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.candidate-card > * {
+  transition: opacity 160ms ease;
 }
 
 .candidate-card--flagged {
   box-shadow:
     inset 3px 0 0 var(--orbital-danger),
     var(--orbital-shadow-soft);
+}
+
+.candidate-card--draggable {
+  cursor: grab;
+}
+
+.candidate-card--dragging {
+  position: relative;
+  z-index: 2;
+  cursor: grabbing;
+  border-color: var(--orbital-accent);
+  background: transparent;
+  box-shadow: var(--orbital-shadow);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.candidate-card--dragging > * {
+  opacity: 0.25;
+}
+
+.candidate-card--settling {
+  animation: candidate-card-settle 180ms ease-out;
+}
+
+.candidate-card--settling > * {
+  animation: candidate-card-settle-content 180ms ease-out;
+}
+
+@keyframes candidate-card-settle {
+  from {
+    border-color: var(--orbital-accent);
+    box-shadow: var(--orbital-shadow);
+    transform: translateY(-2px) scale(1.02);
+  }
+
+  to {
+    box-shadow: var(--orbital-shadow-soft);
+    transform: none;
+  }
+}
+
+@keyframes candidate-card-settle-content {
+  from {
+    opacity: 0.25;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .candidate-card__top {

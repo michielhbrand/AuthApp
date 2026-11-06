@@ -18,6 +18,9 @@ const route = useRoute()
 const router = useRouter()
 const store = useBoardsStore()
 const switcher = ref<InstanceType<typeof BoardSwitcher> | null>(null)
+const dragged = ref<{ candidateId: string; stepId: string } | null>(null)
+const settlingCandidateId = ref<string | null>(null)
+let settleTimer: ReturnType<typeof setTimeout> | undefined
 
 const boardId = computed(() => String(route.params.boardId ?? ''))
 const board = computed(() => store.boardById(boardId.value))
@@ -35,6 +38,25 @@ const next = computed(() =>
   boardIndex.value >= 0 ? store.orderedBoards[boardIndex.value + 1] : undefined,
 )
 
+const draggedStepIndex = computed(() => {
+  if (!board.value || !dragged.value) {
+    return -1
+  }
+
+  return board.value.steps.findIndex((step) => step.id === dragged.value?.stepId)
+})
+
+const dropStepIds = computed(() => {
+  if (!board.value || draggedStepIndex.value < 0) {
+    return []
+  }
+
+  return [
+    board.value.steps[draggedStepIndex.value - 1]?.id,
+    board.value.steps[draggedStepIndex.value + 1]?.id,
+  ].filter((id): id is string => Boolean(id))
+})
+
 function candidatesFor(stepId: string): Candidate[] {
   return board.value ? candidatesInStep(board.value, stepId) : []
 }
@@ -45,6 +67,33 @@ function goToBoard(id: string | undefined): void {
   }
 
   void router.push({ name: 'board', params: { boardId: id } })
+}
+
+function onCandidateDragStart(candidate: Candidate): void {
+  settlingCandidateId.value = null
+  window.clearTimeout(settleTimer)
+  dragged.value = { candidateId: candidate.id, stepId: candidate.stepId }
+}
+
+function onCandidateDragEnd(): void {
+  dragged.value = null
+}
+
+function onCandidateDrop(stepId: string): void {
+  const current = dragged.value
+
+  if (!current || !dropStepIds.value.includes(stepId)) {
+    dragged.value = null
+    return
+  }
+
+  store.moveCandidate(current.candidateId, stepId)
+  settlingCandidateId.value = current.candidateId
+  window.clearTimeout(settleTimer)
+  settleTimer = window.setTimeout(() => {
+    settlingCandidateId.value = null
+  }, 220)
+  dragged.value = null
 }
 
 function lastStepName(candidate: Candidate): string {
@@ -79,7 +128,10 @@ function onKeydown(event: KeyboardEvent): void {
 }
 
 onMounted(() => document.addEventListener('keydown', onKeydown))
-onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown)
+  window.clearTimeout(settleTimer)
+})
 </script>
 
 <template>
@@ -139,6 +191,12 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
             :step="step"
             :index="index"
             :candidates="candidatesFor(step.id)"
+            :drop-target="dropStepIds.includes(step.id)"
+            :dragging-candidate-id="dragged?.candidateId"
+            :settling-candidate-id="settlingCandidateId ?? undefined"
+            @drag-start="onCandidateDragStart"
+            @drag-end="onCandidateDragEnd"
+            @drop="onCandidateDrop"
           />
         </div>
       </div>

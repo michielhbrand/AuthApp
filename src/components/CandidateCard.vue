@@ -1,12 +1,25 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useBoardsStore } from '@/stores/boards'
-import { initials as getInitials, isOverTarget, nextStep, stepById } from '@/lib/pipeline'
+import {
+  initials as getInitials,
+  isOverTarget,
+  nextStep,
+  previousStep,
+  stepById,
+} from '@/lib/pipeline'
 import type { Board, Candidate } from '@/types/pipeline'
 
 const props = defineProps<{
   board: Board
   candidate: Candidate
+  dragging?: boolean
+  settling?: boolean
+}>()
+
+const emit = defineEmits<{
+  'drag-start': [candidate: Candidate]
+  'drag-end': []
 }>()
 
 const store = useBoardsStore()
@@ -14,6 +27,8 @@ const store = useBoardsStore()
 const step = computed(() => stepById(props.board, props.candidate.stepId))
 const overTarget = computed(() => isOverTarget(props.board, props.candidate))
 const next = computed(() => nextStep(props.board, props.candidate))
+const previous = computed(() => previousStep(props.board, props.candidate))
+const canDrag = computed(() => Boolean(next.value || previous.value))
 
 const initials = computed(() => getInitials(props.candidate.name))
 
@@ -39,10 +54,36 @@ function advance(): void {
 
   store.hireCandidate(props.candidate.id)
 }
+
+function onDragStart(event: DragEvent): void {
+  if (!canDrag.value || !event.dataTransfer) {
+    event.preventDefault()
+    return
+  }
+
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', props.candidate.id)
+  emit('drag-start', props.candidate)
+}
+
+function onDragEnd(): void {
+  emit('drag-end')
+}
 </script>
 
 <template>
-  <article class="candidate-card" :class="{ 'candidate-card--flagged': overTarget }">
+  <article
+    class="candidate-card"
+    :class="{
+      'candidate-card--flagged': overTarget,
+      'candidate-card--draggable': canDrag,
+      'candidate-card--dragging': dragging,
+      'candidate-card--settling': settling,
+    }"
+    :draggable="canDrag"
+    @dragstart="onDragStart"
+    @dragend="onDragEnd"
+  >
     <div class="candidate-card__top">
       <span class="candidate-avatar" aria-hidden="true">{{ initials }}</span>
       <div class="candidate-card__identity">

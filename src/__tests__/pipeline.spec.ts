@@ -5,6 +5,7 @@ import {
   groupBoards,
   isOverTarget,
   nextStep,
+  previousStep,
   summariseBoard,
   summariseBoards,
 } from '@/lib/pipeline'
@@ -77,11 +78,13 @@ describe('pipeline helpers', () => {
     expect(summary.pipelineCounts).toEqual([1, 1])
   })
 
-  it('finds the next step and stops at the final step', () => {
+  it('finds adjacent steps and stops at the board edges', () => {
     const item = board()
 
     expect(nextStep(item, candidate())?.id).toBe('s2')
     expect(nextStep(item, candidate({ stepId: 's2' }))).toBeUndefined()
+    expect(previousStep(item, candidate({ stepId: 's2' }))?.id).toBe('s1')
+    expect(previousStep(item, candidate())).toBeUndefined()
   })
 
   it('groups boards in department order and sums totals', () => {
