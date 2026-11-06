@@ -52,8 +52,9 @@ defineProps<{
     </main>
 
     <footer class="page-footer">
-      <span>TeamBuilder / Vue 3 + Supabase</span>
-      <span>Orbital system / A</span>
+      <span>TeamBuilder</span>
+      <span>Hiring & Recruitment</span>
+      <span>Orbital System</span>
     </footer>
   </div>
 </template>

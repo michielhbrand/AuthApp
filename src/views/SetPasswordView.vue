@@ -48,6 +48,13 @@ const panelTitle = computed(() => {
 
   return auth.isAuthenticated ? 'New password' : 'Link required'
 })
+const footerLabel = computed(() => {
+  if (auth.isAuthenticated) {
+    return 'Already set a password?'
+  }
+
+  return needsLinkConfirmation.value ? 'Prefer to sign in?' : 'Link expired?'
+})
 
 const passwordRules = [
   (value: string) => Boolean(value) || 'Password is required',
@@ -82,6 +89,14 @@ async function submit(): Promise<void> {
   success.value = true
   await new Promise((resolve) => setTimeout(resolve, 900))
   await router.replace('/overview')
+}
+
+async function goToLogin(): Promise<void> {
+  if (auth.isAuthenticated) {
+    await auth.signOut()
+  }
+
+  await router.replace('/')
 }
 </script>
 
@@ -169,9 +184,9 @@ async function submit(): Promise<void> {
       </div>
     </template>
 
-    <div v-if="!auth.isAuthenticated && !needsLinkConfirmation" class="auth-panel-footer">
-      <span class="mono-label">Link expired?</span>
-      <v-btn color="primary" variant="text" @click="router.replace('/')">Back to sign in</v-btn>
+    <div class="auth-panel-footer">
+      <span class="mono-label">{{ footerLabel }}</span>
+      <v-btn color="primary" variant="text" @click="goToLogin">Sign in</v-btn>
     </div>
   </AuthShell>
 </template>

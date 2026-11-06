@@ -187,7 +187,8 @@ can be newer than the latest release.
 - Invite email opens the wrong host (for example `localhost:3000`): the cloud Supabase Site
   URL is wrong. Set it to the Pages origin and re-send the invitation.
 - Expired or already-used invite link: the user arrives without a session; `/set-password`
-  shows the link error instead of the form.
+  shows the link error instead of the form and offers a **Sign in** button so users who
+  already set their password can return to login.
 - Invite works for one recipient but fails on a corporate domain: an email security scanner
   prefetched the `ConfirmationURL` and consumed the single-use token. Switch the invite
   template to the `token_hash` link documented in `README.md` so the app redeems it only
