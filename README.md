@@ -29,6 +29,8 @@ Actions. Board data is deterministic in-memory dummy data; Supabase is used only
 - A pipeline overview at `/overview` with workload and attention summaries
 - Role boards grouped by department at `/boards`
 - A step-column pipeline for each role with candidate cards and over-target flags
+- A right-side applicant drawer with editable contact details, a favourite toggle, and
+  education / work-experience notes
 - Interactive in-memory candidate actions: advance, move, reject, hire, and reopen
 - An account page with non-sensitive session and identity details
 - Sign-out and redirect back to the login screen
@@ -278,6 +280,7 @@ src/
   components/BoardList.vue  Searchable boards grouped by department
   components/BoardColumn.vue One pipeline step column
   components/CandidateCard.vue Candidate summary and actions
+  components/ApplicantDrawer.vue Editable applicant profile and notes
   components/PipelineBar.vue Per-step progress bar
   components/ThemeToggle.vue Light/dark mode toggle
   views/LoginView.vue       Login form

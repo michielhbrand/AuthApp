@@ -64,6 +64,41 @@ describe('boards store', () => {
     expect(candidate.status).toBe('hired')
   })
 
+  it('updates applicant profile fields and favourites', () => {
+    const store = useBoardsStore()
+    const candidate = store.boards[0]?.candidates[0]
+
+    expect(candidate).toBeDefined()
+    if (!candidate) return
+
+    store.updateCandidateField(candidate.id, 'email', 'new.address@example.com')
+    store.updateCandidateField(candidate.id, 'currentRole', 'Staff Engineer')
+
+    expect(candidate.email).toBe('new.address@example.com')
+    expect(candidate.currentRole).toBe('Staff Engineer')
+
+    const initialFavorite = candidate.favorite
+    store.toggleFavorite(candidate.id)
+    expect(candidate.favorite).toBe(!initialFavorite)
+
+    store.toggleFavorite(candidate.id)
+    expect(candidate.favorite).toBe(initialFavorite)
+  })
+
+  it('updates the education and experience notes', () => {
+    const store = useBoardsStore()
+    const candidate = store.boards[0]?.candidates[0]
+
+    expect(candidate).toBeDefined()
+    if (!candidate) return
+
+    store.updateCandidateField(candidate.id, 'education', 'BSc Design, 2020 - 2024')
+    store.updateCandidateField(candidate.id, 'experience', 'Designer, Northwind Labs')
+
+    expect(candidate.education).toBe('BSc Design, 2020 - 2024')
+    expect(candidate.experience).toBe('Designer, Northwind Labs')
+  })
+
   it('derives needs-attention boards and totals', () => {
     const store = useBoardsStore()
 

@@ -26,9 +26,7 @@ export function activeCandidates(board: Board): Candidate[] {
 }
 
 export function candidatesInStep(board: Board, stepId: string): Candidate[] {
-  return activeCandidates(board)
-    .filter((candidate) => candidate.stepId === stepId)
-    .sort((a, b) => b.score - a.score)
+  return activeCandidates(board).filter((candidate) => candidate.stepId === stepId)
 }
 
 export function closedCandidates(board: Board, status: 'hired' | 'rejected'): Candidate[] {

@@ -76,6 +76,13 @@ export default createVuetify({
       rounded: 'lg',
       variant: 'outlined',
     },
+    VTextarea: {
+      class: 'orbital-field',
+      color: 'primary',
+      density: 'comfortable',
+      rounded: 'lg',
+      variant: 'outlined',
+    },
     VAlert: {
       class: 'orbital-alert',
       rounded: 'lg',

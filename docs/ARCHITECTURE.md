@@ -43,9 +43,11 @@ rule set; the selected reference is `design/ui-directions.html#orbital`.
 - `src/components/BrandMark.vue` owns the TeamBuilder lockup. `src/components/AuthShell.vue`
   owns the shared login and password-setup layout. `src/components/AppShell.vue` owns the
   top-bar navigation for Overview, Boards, and Account.
-- `src/components/BoardList.vue`, `BoardColumn.vue`, `CandidateCard.vue`, and
-  `PipelineBar.vue` implement the board UI. `design/hiring-pipeline-step-columns.html` is
-  the structural concept reference; its palette and fonts are not used.
+- `src/components/BoardList.vue`, `BoardColumn.vue`, `CandidateCard.vue`,
+  `ApplicantDrawer.vue`, and `PipelineBar.vue` implement the board UI.
+  `ApplicantDrawer.vue` is the right-side editable candidate profile opened from a card.
+  `design/hiring-pipeline-step-columns.html` is the structural concept reference; its
+  palette and fonts are not used.
 - Fonts are self-hosted with `@fontsource-variable/manrope` and `@fontsource/ibm-plex-mono`.
   There are no runtime font requests.
 - Views must use the shared tokens and components rather than page-specific colors, radii,
@@ -111,16 +113,18 @@ without them. It also rejects a `sb_secret_` key defensively.
 
 - `boards` — the current in-memory board list, initialized from `createBoards()`.
 - derived `groups`, `orderedBoards`, `summaries`, `totals`, and `needsAttention`.
-- `boardById`, `summaryById`.
+- `boardById`, `summaryById`, `candidateById`.
+- `updateCandidateField` and `toggleFavorite` for the editable applicant profile.
 - `advanceCandidate`, `moveCandidate`, `hireCandidate`, `rejectCandidate`,
   `reopenCandidate`, and `reset`.
 
 `src/data/boards.ts` generates deterministic dummy data with a seeded random generator. One
-board represents one hiring role. `src/types/pipeline.ts` defines the domain types, and
-`src/lib/pipeline.ts` contains pure helpers for step lookup, over-target checks, next-step
-navigation, department grouping, and summaries. Components read from the store and call its
-actions; they do not mutate board data directly. The store is intentionally not persisted
-and not connected to Supabase.
+board represents one hiring role. Candidates include seeded contact details, a current role,
+a favourite flag, and education / work-experience notes. `src/types/pipeline.ts` defines the
+domain types, and `src/lib/pipeline.ts` contains pure helpers for step lookup, over-target
+checks, next-step navigation, department grouping, and summaries. Components read from the
+store and call its actions; they do not mutate board data directly. The store is
+intentionally not persisted and not connected to Supabase.
 
 ## Routing and GitHub Pages
 

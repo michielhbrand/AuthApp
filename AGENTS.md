@@ -76,6 +76,8 @@ npm run build
 - `src/components/BoardSwitcher.vue` — compact header menu for switching between role boards.
 - `src/components/BoardColumn.vue` — one pipeline step column.
 - `src/components/CandidateCard.vue` — candidate summary and pipeline actions.
+- `src/components/ApplicantDrawer.vue` — right-side editable applicant profile with favourite,
+  education, and work-experience notes.
 - `src/components/PipelineBar.vue` — per-step candidate progress bar.
 - `src/views/LoginView.vue` — login form and validation.
 - `src/views/SetPasswordView.vue` — invite and password update form.

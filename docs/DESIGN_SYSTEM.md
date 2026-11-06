@@ -36,6 +36,7 @@ scale, Orbital can read as a generic SaaS theme. Use the motif and the tokens de
 | Board switcher     | `src/components/BoardSwitcher.vue`         |
 | Board column       | `src/components/BoardColumn.vue`           |
 | Candidate card     | `src/components/CandidateCard.vue`         |
+| Applicant drawer   | `src/components/ApplicantDrawer.vue`       |
 | Progress bar       | `src/components/PipelineBar.vue`           |
 | Theme toggle       | `src/components/ThemeToggle.vue`           |
 | Visual exploration | `design/ui-directions.html`                |
@@ -189,8 +190,12 @@ that prototype's palette, gradients, or Bricolage/Hanken fonts.
   the switcher spans the available width.
 - Step columns are a horizontal grid with a numbered step header, target days, candidate
   count, and candidate cards. Columns use the surface-2 fill and hairline dividers.
-- Candidate cards use a 12 px radius, a token-only initials avatar, score, source, time in
-  step, and the primary advance/hire action. Move and reject actions sit in a disclosure.
+- Candidate cards use a 12 px radius, a token-only initials avatar, source, time in step,
+  and the primary advance/hire action. Move and reject actions sit in a disclosure.
+- Clicking a candidate card opens a right-side applicant drawer at roughly half the viewport
+  width. It uses the surface, hairline, and field tokens, with an editable basic-information
+  form, a star favourite toggle, and separate auto-growing textareas for education and work
+  experience. The drawer becomes full width at `720px`.
 - Candidate cards can be dragged one step left or right. While a card is held, only the
   adjacent columns highlight with the accent token and accept the drop. The dragged card
   fades its content but keeps its outline, and lifts and settles with a short transition.
@@ -252,6 +257,18 @@ class. Keep the rules attached to the field.
   icon. Separate rows with hairlines; no zebra striping.
 - Values wrap with `overflow-wrap: anywhere`; IDs and session timestamps use mono at
   `0.78rem`.
+
+### Applicant drawer
+
+- Use `ApplicantDrawer.vue` from `BoardView`; it is a temporary `v-navigation-drawer` on the
+  right at `50vw` desktop.
+- The header keeps the initials avatar, applicant name, source metadata, a star favourite
+  button (`mdi-star` / `mdi-star-outline` with `aria-pressed`), and a close button.
+- Editable basic fields use the standard `orbital-field` treatment. Education and work
+  experience each use one auto-growing `v-textarea` with the same field treatment rather
+  than structured timeline items.
+- The drawer is in-memory only, like the rest of the board data. The note at the end of the
+  body tells the user that changes reset on reload.
 
 ### Brand, avatar, and status
 

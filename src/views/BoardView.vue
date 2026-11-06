@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import ApplicantDrawer from '@/components/ApplicantDrawer.vue'
 import AppShell from '@/components/AppShell.vue'
 import BoardColumn from '@/components/BoardColumn.vue'
 import BoardSwitcher from '@/components/BoardSwitcher.vue'
@@ -20,6 +21,8 @@ const store = useBoardsStore()
 const switcher = ref<InstanceType<typeof BoardSwitcher> | null>(null)
 const dragged = ref<{ candidateId: string; stepId: string } | null>(null)
 const settlingCandidateId = ref<string | null>(null)
+const profileCandidateId = ref<string | null>(null)
+const profileOpen = ref(false)
 let settleTimer: ReturnType<typeof setTimeout> | undefined
 
 const boardId = computed(() => String(route.params.boardId ?? ''))
@@ -67,6 +70,11 @@ function goToBoard(id: string | undefined): void {
   }
 
   void router.push({ name: 'board', params: { boardId: id } })
+}
+
+function openProfile(candidate: Candidate): void {
+  profileCandidateId.value = candidate.id
+  profileOpen.value = true
 }
 
 function onCandidateDragStart(candidate: Candidate): void {
@@ -126,6 +134,10 @@ function onKeydown(event: KeyboardEvent): void {
     goToBoard(next.value?.id)
   }
 }
+
+watch(boardId, () => {
+  profileOpen.value = false
+})
 
 onMounted(() => document.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => {
@@ -196,6 +208,7 @@ onBeforeUnmount(() => {
             :settling-candidate-id="settlingCandidateId ?? undefined"
             @drag-start="onCandidateDragStart"
             @drag-end="onCandidateDragEnd"
+            @open-profile="openProfile"
             @drop="onCandidateDrop"
           />
         </div>
@@ -247,5 +260,7 @@ onBeforeUnmount(() => {
         </div>
       </details>
     </div>
+
+    <ApplicantDrawer v-model="profileOpen" :candidate-id="profileCandidateId" />
   </AppShell>
 </template>

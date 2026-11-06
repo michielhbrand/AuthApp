@@ -15,6 +15,9 @@ interface CandidateContext {
   candidate: Candidate
 }
 
+export type EditableCandidateField =
+  'name' | 'email' | 'phone' | 'currentRole' | 'education' | 'experience'
+
 export const useBoardsStore = defineStore('boards', () => {
   const boards = ref<Board[]>(createBoards())
 
@@ -34,6 +37,30 @@ export const useBoardsStore = defineStore('boards', () => {
 
   function summaryById(id: string): BoardSummary | undefined {
     return summaries.value.find((summary) => summary.board.id === id)
+  }
+
+  function candidateById(id: string): Candidate | undefined {
+    return candidateContext(id)?.candidate
+  }
+
+  function updateCandidateField(
+    candidateId: string,
+    field: EditableCandidateField,
+    value: string,
+  ): void {
+    const context = candidateContext(candidateId)
+
+    if (context) {
+      context.candidate[field] = value
+    }
+  }
+
+  function toggleFavorite(candidateId: string): void {
+    const context = candidateContext(candidateId)
+
+    if (context) {
+      context.candidate.favorite = !context.candidate.favorite
+    }
   }
 
   function candidateContext(candidateId: string): CandidateContext | undefined {
@@ -115,6 +142,9 @@ export const useBoardsStore = defineStore('boards', () => {
     needsAttention,
     boardById,
     summaryById,
+    candidateById,
+    updateCandidateField,
+    toggleFavorite,
     advanceCandidate,
     moveCandidate,
     hireCandidate,

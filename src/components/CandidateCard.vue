@@ -20,6 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'drag-start': [candidate: Candidate]
   'drag-end': []
+  'open-profile': [candidate: Candidate]
 }>()
 
 const store = useBoardsStore()
@@ -55,6 +56,12 @@ function advance(): void {
   store.hireCandidate(props.candidate.id)
 }
 
+function openProfile(): void {
+  if (!props.dragging) {
+    emit('open-profile', props.candidate)
+  }
+}
+
 function onDragStart(event: DragEvent): void {
   if (!canDrag.value || !event.dataTransfer) {
     event.preventDefault()
@@ -73,7 +80,7 @@ function onDragEnd(): void {
 
 <template>
   <article
-    class="candidate-card"
+    class="candidate-card candidate-card--clickable"
     :class="{
       'candidate-card--flagged': overTarget,
       'candidate-card--draggable': canDrag,
@@ -81,6 +88,12 @@ function onDragEnd(): void {
       'candidate-card--settling': settling,
     }"
     :draggable="canDrag"
+    role="button"
+    tabindex="0"
+    :aria-label="`Open applicant profile for ${candidate.name}`"
+    @click="openProfile"
+    @keydown.enter.self="openProfile"
+    @keydown.space.self.prevent="openProfile"
     @dragstart="onDragStart"
     @dragend="onDragEnd"
   >
@@ -90,7 +103,6 @@ function onDragEnd(): void {
         <p class="candidate-name">{{ candidate.name }}</p>
         <p class="candidate-source">{{ candidate.source }}</p>
       </div>
-      <span class="candidate-score" :title="`Score ${candidate.score}`">{{ candidate.score }}</span>
     </div>
 
     <p class="candidate-days" :class="{ 'candidate-days--over': overTarget }">
@@ -98,7 +110,7 @@ function onDragEnd(): void {
       {{ candidate.daysSinceApplied }} {{ candidate.daysSinceApplied === 1 ? 'day' : 'days' }} ago.
     </p>
 
-    <div class="candidate-actions">
+    <div class="candidate-actions" @click.stop>
       <v-btn
         block
         color="primary"
@@ -110,7 +122,7 @@ function onDragEnd(): void {
       </v-btn>
     </div>
 
-    <details class="candidate-more">
+    <details class="candidate-more" @click.stop>
       <summary>Move or reject</summary>
       <div class="candidate-more__list">
         <v-btn

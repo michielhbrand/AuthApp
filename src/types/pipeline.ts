@@ -21,12 +21,17 @@ export interface PipelineStep {
 export interface Candidate {
   id: string
   name: string
+  email: string
+  phone: string
+  currentRole: string
+  favorite: boolean
   source: string
-  score: number
   stepId: string
   status: CandidateStatus
   daysInStep: number
   daysSinceApplied: number
+  education: string
+  experience: string
 }
 
 export interface Board {

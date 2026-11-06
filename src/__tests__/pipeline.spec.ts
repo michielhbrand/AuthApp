@@ -15,12 +15,17 @@ function candidate(overrides: Partial<Candidate> = {}): Candidate {
   return {
     id: 'c1',
     name: 'Amara Okafor',
+    email: 'amara.okafor@example.com',
+    phone: '+1 555 010 2000',
+    currentRole: 'Product Designer',
+    favorite: false,
     source: 'Referral',
-    score: 82,
     stepId: 's1',
     status: 'active',
     daysInStep: 2,
     daysSinceApplied: 6,
+    education: '',
+    experience: '',
     ...overrides,
   }
 }

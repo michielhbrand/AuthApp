@@ -276,6 +276,91 @@ const LAST = [
 
 const SOURCES = ['LinkedIn', 'Referral', 'Careers site', 'Indeed', 'Agency']
 
+const JOB_TITLES = [
+  'Frontend Engineer',
+  'Backend Engineer',
+  'Product Designer',
+  'Engineering Manager',
+  'Data Analyst',
+  'Data Scientist',
+  'Account Executive',
+  'Operations Lead',
+  'Customer Success Manager',
+  'Content Strategist',
+  'Growth Marketer',
+  'UX Researcher',
+  'Platform Engineer',
+  'Product Manager',
+]
+
+const COMPANIES = [
+  'Northwind Labs',
+  'Brightline',
+  'Harbor Studio',
+  'Cobalt Systems',
+  'Fieldwork',
+  'Lumen Health',
+  'Atlas Commerce',
+  'Pine & Co',
+  'Meridian',
+  'Signal Works',
+  'Bluebird',
+  'Tessellate',
+]
+
+const DEGREES = [
+  'BSc Computer Science',
+  'BA Interaction Design',
+  'MSc Data Science',
+  'BSc Information Systems',
+  'MBA',
+  'BA Communications',
+  'MSc Human-Computer Interaction',
+  'BSc Mathematics',
+  'BA Economics',
+  'MSc Software Engineering',
+]
+
+const SCHOOLS = [
+  'Delft University of Technology',
+  'University of Amsterdam',
+  'Eindhoven University of Technology',
+  'University of Utrecht',
+  'Leiden University',
+  'Technical University of Munich',
+  'University of Edinburgh',
+  'Trinity College Dublin',
+  'Uppsala University',
+  'University of Toronto',
+]
+
+const PERIODS = [
+  '2008 - 2012',
+  '2010 - 2014',
+  '2012 - 2016',
+  '2014 - 2018',
+  '2015 - 2019',
+  '2016 - 2020',
+  '2018 - 2022',
+]
+
+const EDUCATION_NOTES = [
+  'Graduated with honours.',
+  'Focused on human-centred systems.',
+  'Thesis on collaborative tooling.',
+  'Exchange semester abroad.',
+  'Specialised in distributed systems.',
+]
+
+const EXPERIENCE_NOTES = [
+  'Led a small cross-functional team.',
+  'Owned the core product surface.',
+  'Shipped a platform-wide migration.',
+  'Built the first design system.',
+  'Scaled the function from three to twelve people.',
+  'Delivered the highest revenue quarter on record.',
+]
+
 function mulberry32(seed: number): () => number {
   let value = seed
 
@@ -343,15 +428,32 @@ export function createBoards(): Board[] {
       }
 
       candidateId += 1
+      const email = `${name.toLowerCase().replace(/\s+/g, '.')}@example.com`
+      const phone = `+1 555 ${between(100, 999)} ${between(1000, 9999)}`
+      const education = Array.from(
+        { length: between(1, 2) },
+        () => `${pick(DEGREES)}, ${pick(SCHOOLS)} (${pick(PERIODS)})\n${pick(EDUCATION_NOTES)}`,
+      ).join('\n\n')
+      const experience = Array.from(
+        { length: between(1, 3) },
+        () =>
+          `${pick(JOB_TITLES)}, ${pick(COMPANIES)} (${pick(PERIODS)})\n${pick(EXPERIENCE_NOTES)}`,
+      ).join('\n\n')
+
       candidates.push({
         id: `c${candidateId}`,
         name,
+        email,
+        phone,
+        currentRole: pick(JOB_TITLES),
+        favorite: rand() < 0.18,
         source: pick(SOURCES),
-        score: between(56, 96),
         stepId: step.id,
         status,
         daysInStep: rand() < 0.2 ? step.targetDays + between(1, 4) : between(0, step.targetDays),
         daysSinceApplied: between(1, 30),
+        education,
+        experience,
       })
     }
 

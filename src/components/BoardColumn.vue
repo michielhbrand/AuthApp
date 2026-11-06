@@ -15,6 +15,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'drag-start': [candidate: Candidate]
   'drag-end': []
+  'open-profile': [candidate: Candidate]
   drop: [stepId: string]
 }>()
 
@@ -69,6 +70,7 @@ function onDrop(event: DragEvent): void {
         :settling="candidate.id === settlingCandidateId"
         @drag-start="emit('drag-start', $event)"
         @drag-end="emit('drag-end')"
+        @open-profile="emit('open-profile', $event)"
       />
       <p v-if="!candidates.length" class="board-column__empty">No one in this step.</p>
     </div>
