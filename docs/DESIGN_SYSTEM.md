@@ -33,6 +33,7 @@ scale, Orbital can read as a generic SaaS theme. Use the motif and the tokens de
 | Auth page shell    | `src/components/AuthShell.vue`             |
 | App page shell     | `src/components/AppShell.vue`              |
 | Board list         | `src/components/BoardList.vue`             |
+| Board switcher     | `src/components/BoardSwitcher.vue`         |
 | Board column       | `src/components/BoardColumn.vue`           |
 | Candidate card     | `src/components/CandidateCard.vue`         |
 | Progress bar       | `src/components/PipelineBar.vue`           |
@@ -182,8 +183,10 @@ that prototype's palette, gradients, or Bricolage/Hanken fonts.
 - `/boards` uses a search field, All roles / Needs attention filter chips, department
   headings, and a responsive grid of board cards. Each card shows the role, open positions,
   active candidates, over-target count, and a pipeline bar.
-- `/boards/:boardId` uses a two-column layout: a searchable board switcher grouped by
-  department and the step-column pipeline. At `1024px` the switcher moves above the board.
+- `/boards/:boardId` gives the step-column pipeline the full content width. A compact
+  board-switcher button in the page header opens a searchable, department-grouped menu for
+  changing roles, paired with Previous / Next controls. At `1024px` the header stacks and
+  the switcher spans the available width.
 - Step columns are a horizontal grid with a numbered step header, target days, candidate
   count, and candidate cards. Columns use the surface-2 fill and hairline dividers.
 - Candidate cards use a 12 px radius, a token-only initials avatar, score, source, time in

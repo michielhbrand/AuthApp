@@ -73,6 +73,7 @@ npm run build
 - `src/components/AuthShell.vue` — shared Orbital layout for login and password setup.
 - `src/components/BrandMark.vue` — the only application brand lockup.
 - `src/components/BoardList.vue` — searchable boards grouped by department.
+- `src/components/BoardSwitcher.vue` — compact header menu for switching between role boards.
 - `src/components/BoardColumn.vue` — one pipeline step column.
 - `src/components/CandidateCard.vue` — candidate summary and pipeline actions.
 - `src/components/PipelineBar.vue` — per-step candidate progress bar.

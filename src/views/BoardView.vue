@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppShell from '@/components/AppShell.vue'
 import BoardColumn from '@/components/BoardColumn.vue'
-import BoardList from '@/components/BoardList.vue'
+import BoardSwitcher from '@/components/BoardSwitcher.vue'
 import {
   candidatesInStep,
   closedCandidates,
@@ -17,6 +17,7 @@ import type { Candidate } from '@/types/pipeline'
 const route = useRoute()
 const router = useRouter()
 const store = useBoardsStore()
+const switcher = ref<InstanceType<typeof BoardSwitcher> | null>(null)
 
 const boardId = computed(() => String(route.params.boardId ?? ''))
 const board = computed(() => store.boardById(boardId.value))
@@ -65,7 +66,10 @@ function onKeydown(event: KeyboardEvent): void {
     return
   }
 
-  if (event.key === '[') {
+  if (event.key === '/') {
+    event.preventDefault()
+    switcher.value?.open()
+  } else if (event.key === '[') {
     event.preventDefault()
     goToBoard(previous.value?.id)
   } else if (event.key === ']') {
@@ -87,30 +91,22 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
     </div>
 
     <div v-else class="board-detail-layout">
-      <aside class="board-sidebar" aria-label="Switch board">
-        <div class="board-sidebar__head">
-          <p class="mono-label">Switch board</p>
-          <p>Search roles or move through departments.</p>
+      <header class="page-heading board-heading">
+        <div>
+          <p class="eyebrow">{{ board.department }}</p>
+          <h1 class="page-title board-title">{{ board.title }}</h1>
+          <p class="lede">
+            {{ board.openPositions }}
+            {{ board.openPositions === 1 ? 'open position' : 'open positions' }}.
+            {{ summary?.active ?? 0 }} active
+            {{ summary?.active === 1 ? 'candidate' : 'candidates' }}.
+            <template v-if="summary?.overTarget"> {{ summary.overTarget }} over target. </template>
+            <template v-else>Nobody over target.</template>
+          </p>
         </div>
-        <BoardList :groups="store.groups" :active-board-id="board.id" />
-      </aside>
 
-      <div class="board-detail-main">
-        <header class="page-heading board-heading">
-          <div>
-            <p class="eyebrow">{{ board.department }}</p>
-            <h1 class="page-title board-title">{{ board.title }}</h1>
-            <p class="lede">
-              {{ board.openPositions }}
-              {{ board.openPositions === 1 ? 'open position' : 'open positions' }}.
-              {{ summary?.active ?? 0 }} active
-              {{ summary?.active === 1 ? 'candidate' : 'candidates' }}.
-              <template v-if="summary?.overTarget">
-                {{ summary.overTarget }} over target.
-              </template>
-              <template v-else>Nobody over target.</template>
-            </p>
-          </div>
+        <div class="board-controls">
+          <BoardSwitcher ref="switcher" :groups="store.groups" :active-board-id="board.id" />
 
           <nav class="board-nav" aria-label="Move between boards">
             <v-btn
@@ -131,67 +127,67 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
               Next
             </v-btn>
           </nav>
-        </header>
+        </div>
+      </header>
 
-        <div class="board-columns-wrap">
-          <div class="board-columns" :style="{ '--columns': board.steps.length }">
-            <BoardColumn
-              v-for="(step, index) in board.steps"
-              :key="step.id"
-              :board="board"
-              :step="step"
-              :index="index"
-              :candidates="candidatesFor(step.id)"
-            />
+      <div class="board-columns-wrap">
+        <div class="board-columns" :style="{ '--columns': board.steps.length }">
+          <BoardColumn
+            v-for="(step, index) in board.steps"
+            :key="step.id"
+            :board="board"
+            :step="step"
+            :index="index"
+            :candidates="candidatesFor(step.id)"
+          />
+        </div>
+      </div>
+
+      <details class="closed-panel">
+        <summary>
+          Closed candidates. {{ hired.length }} hired, {{ rejected.length }} rejected.
+        </summary>
+
+        <div class="closed-grid">
+          <div class="closed-column">
+            <h3>
+              Hired <span>{{ hired.length }}</span>
+            </h3>
+            <p v-if="!hired.length" class="closed-empty">None yet.</p>
+            <div v-for="candidate in hired" :key="candidate.id" class="closed-row">
+              <span class="candidate-avatar candidate-avatar--small" aria-hidden="true">
+                {{ initials(candidate.name) }}
+              </span>
+              <div class="closed-row__copy">
+                <p class="candidate-name">{{ candidate.name }}</p>
+                <p class="candidate-source">Last step: {{ lastStepName(candidate) }}</p>
+              </div>
+              <v-btn size="small" variant="text" @click="store.reopenCandidate(candidate.id)">
+                Reopen
+              </v-btn>
+            </div>
+          </div>
+
+          <div class="closed-column">
+            <h3>
+              Rejected <span>{{ rejected.length }}</span>
+            </h3>
+            <p v-if="!rejected.length" class="closed-empty">None yet.</p>
+            <div v-for="candidate in rejected" :key="candidate.id" class="closed-row">
+              <span class="candidate-avatar candidate-avatar--small" aria-hidden="true">
+                {{ initials(candidate.name) }}
+              </span>
+              <div class="closed-row__copy">
+                <p class="candidate-name">{{ candidate.name }}</p>
+                <p class="candidate-source">Last step: {{ lastStepName(candidate) }}</p>
+              </div>
+              <v-btn size="small" variant="text" @click="store.reopenCandidate(candidate.id)">
+                Reopen
+              </v-btn>
+            </div>
           </div>
         </div>
-
-        <details class="closed-panel">
-          <summary>
-            Closed candidates. {{ hired.length }} hired, {{ rejected.length }} rejected.
-          </summary>
-
-          <div class="closed-grid">
-            <div class="closed-column">
-              <h3>
-                Hired <span>{{ hired.length }}</span>
-              </h3>
-              <p v-if="!hired.length" class="closed-empty">None yet.</p>
-              <div v-for="candidate in hired" :key="candidate.id" class="closed-row">
-                <span class="candidate-avatar candidate-avatar--small" aria-hidden="true">
-                  {{ initials(candidate.name) }}
-                </span>
-                <div class="closed-row__copy">
-                  <p class="candidate-name">{{ candidate.name }}</p>
-                  <p class="candidate-source">Last step: {{ lastStepName(candidate) }}</p>
-                </div>
-                <v-btn size="small" variant="text" @click="store.reopenCandidate(candidate.id)">
-                  Reopen
-                </v-btn>
-              </div>
-            </div>
-
-            <div class="closed-column">
-              <h3>
-                Rejected <span>{{ rejected.length }}</span>
-              </h3>
-              <p v-if="!rejected.length" class="closed-empty">None yet.</p>
-              <div v-for="candidate in rejected" :key="candidate.id" class="closed-row">
-                <span class="candidate-avatar candidate-avatar--small" aria-hidden="true">
-                  {{ initials(candidate.name) }}
-                </span>
-                <div class="closed-row__copy">
-                  <p class="candidate-name">{{ candidate.name }}</p>
-                  <p class="candidate-source">Last step: {{ lastStepName(candidate) }}</p>
-                </div>
-                <v-btn size="small" variant="text" @click="store.reopenCandidate(candidate.id)">
-                  Reopen
-                </v-btn>
-              </div>
-            </div>
-          </div>
-        </details>
-      </div>
+      </details>
     </div>
   </AppShell>
 </template>
