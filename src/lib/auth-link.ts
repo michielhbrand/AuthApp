@@ -15,4 +15,6 @@ const type = readParam('type')
 export const initialAuthLinkType: AuthLinkType =
   type === 'invite' || type === 'recovery' ? type : null
 
+export const initialAuthTokenHash = readParam('token_hash')
+
 export const initialAuthLinkError = readParam('error_description') ?? readParam('error')

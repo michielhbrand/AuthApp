@@ -2,7 +2,12 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { initialAuthLinkError, initialAuthLinkType } from '@/lib/auth-link'
+import {
+  initialAuthLinkError,
+  initialAuthLinkType,
+  initialAuthTokenHash,
+  type AuthLinkType,
+} from '@/lib/auth-link'
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -56,6 +61,8 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const linkError = ref<string | null>(initialAuthLinkError)
+  const linkType = ref<AuthLinkType>(initialAuthLinkType)
+  const linkTokenHash = ref<string | null>(initialAuthTokenHash)
   const passwordSetupRequired = ref(initialAuthLinkType !== null)
   const user = computed<User | null>(() => session.value?.user ?? null)
   const isAuthenticated = computed(() => session.value !== null)
@@ -119,6 +126,40 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function verifyLink(): Promise<boolean> {
+    const tokenHash = linkTokenHash.value
+    const type = linkType.value
+
+    if (!tokenHash || !type) {
+      return false
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type,
+      })
+
+      if (verifyError) {
+        throw verifyError
+      }
+
+      session.value = data.session
+      passwordSetupRequired.value = true
+      linkTokenHash.value = null
+      linkError.value = null
+      return true
+    } catch (caught) {
+      error.value = friendlyErrorMessage(errorMessage(caught))
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function setPassword(password: string): Promise<boolean> {
     loading.value = true
     error.value = null
@@ -165,11 +206,14 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     error,
     linkError,
+    linkType,
+    linkTokenHash,
     passwordSetupRequired,
     user,
     isAuthenticated,
     initialize,
     signIn,
+    verifyLink,
     setPassword,
     signOut,
   }

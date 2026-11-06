@@ -236,3 +236,23 @@ Dates use ISO 8601. Status values are proposed, accepted, superseded, or depreca
   becoming app-level navigation. The top bar wraps on narrow screens instead of collapsing
   into a hidden menu. Account retains the session-detail content that used to live at
   `/dashboard`.
+
+## ADR-018: Redeem invite tokens with an explicit token-hash confirmation step
+
+- **Date:** 2026-11-06
+- **Status:** Accepted
+- **Context:** Supabase's default invite template uses `{{ .ConfirmationURL }}`, which
+  redeems the single-use token on any GET. Corporate email security tools such as Microsoft
+  Defender Safe Links prefetch links, so the token is often spent before the recipient
+  clicks it and they see "Email link is invalid or has expired". A personal address may work
+  while a corporate address fails.
+- **Decision:** Support invite and recovery emails that link to
+  `/set-password?token_hash={{ .TokenHash }}&type=invite` (or `recovery`). Capture the hash
+  in `src/lib/auth-link.ts`, show a **Continue to set password** action, and call
+  `supabase.auth.verifyOtp({ token_hash, type })` from `auth.verifyLink()` only after the
+  recipient clicks. Keep the existing `ConfirmationURL` flow working for operators who do
+  not change their template.
+- **Consequences:** Email prefetchers can fetch the app link but cannot redeem the token;
+  the recipient must press one extra button. The cloud and local invite templates must be
+  updated separately from the code. Expired or already-used token hashes still show the
+  friendly invalid-link message.

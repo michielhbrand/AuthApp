@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   onAuthStateChange: vi.fn<(...args: unknown[]) => unknown>(),
   signInWithPassword: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+  verifyOtp: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   updateUser: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
   signOut: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
 }))
@@ -82,6 +83,40 @@ describe('auth store', () => {
     expect(signedIn).toBe(false)
     expect(auth.isAuthenticated).toBe(false)
     expect(auth.error).toBe('Invalid email or password.')
+  })
+
+  it('verifies an invite token hash and starts password setup', async () => {
+    mocks.verifyOtp.mockResolvedValue({ data: { session }, error: null })
+    const auth = useAuthStore()
+    auth.linkType = 'invite'
+    auth.linkTokenHash = 'token-hash'
+
+    const verified = await auth.verifyLink()
+
+    expect(verified).toBe(true)
+    expect(auth.isAuthenticated).toBe(true)
+    expect(auth.passwordSetupRequired).toBe(true)
+    expect(auth.linkTokenHash).toBeNull()
+    expect(mocks.verifyOtp).toHaveBeenCalledWith({
+      token_hash: 'token-hash',
+      type: 'invite',
+    })
+  })
+
+  it('explains a consumed invite token', async () => {
+    mocks.verifyOtp.mockResolvedValue({
+      data: { session: null },
+      error: new Error('Email link is invalid or has expired'),
+    })
+    const auth = useAuthStore()
+    auth.linkType = 'invite'
+    auth.linkTokenHash = 'used-token'
+
+    const verified = await auth.verifyLink()
+
+    expect(verified).toBe(false)
+    expect(auth.isAuthenticated).toBe(false)
+    expect(auth.error).toBe('This link is invalid or has expired. Ask for a new invitation.')
   })
 
   it('sets a password and clears the setup requirement', async () => {

@@ -74,8 +74,14 @@ rule set; the selected reference is `design/ui-directions.html#orbital`.
    `src/lib/auth-link.ts` reads that type before `supabase-js` consumes and clears the URL.
    The store sets `passwordSetupRequired` for `invite` and `recovery` links.
 10. If the user lands on `/` with a pending password setup, the router guard sends them to
-    `/set-password`. Supabase Auth has already exchanged the link for a session.
-11. `SetPasswordView.vue` validates the new password and calls
+    `/set-password`. With the default `{{ .ConfirmationURL }}` template, Supabase Auth has
+    already exchanged the link for a session.
+11. For invite templates that use `token_hash` instead of `ConfirmationURL`,
+    `auth-link.ts` also captures the hash. `/set-password` shows a **Continue** button and
+    does not redeem the token until the recipient clicks it; `auth.verifyLink()` then calls
+    `supabase.auth.verifyOtp({ token_hash, type })`. This avoids corporate email scanners
+    consuming the one-time link before the recipient opens it.
+12. `SetPasswordView.vue` validates the new password and calls
     `supabase.auth.updateUser({ password })` through `auth.setPassword()`. On success the
     flag is cleared and the user continues to `/overview`. If the link is expired or
     missing, the page shows the error and points back to sign-in.
@@ -88,8 +94,9 @@ rule set; the selected reference is `design/ui-directions.html#orbital`.
 - `isAuthenticated`
 - `initialized` and `loading`
 - `error` (user-facing message)
-- `initialize`, `signIn`, `setPassword`, `signOut`
-- `passwordSetupRequired` and `linkError` for invitation/recovery links
+- `initialize`, `signIn`, `verifyLink`, `setPassword`, `signOut`
+- `passwordSetupRequired`, `linkType`, `linkTokenHash`, and `linkError` for
+  invitation/recovery links
 
 Components must not call `supabase.auth` directly. This keeps error handling and session
 updates consistent.
@@ -181,6 +188,10 @@ can be newer than the latest release.
   URL is wrong. Set it to the Pages origin and re-send the invitation.
 - Expired or already-used invite link: the user arrives without a session; `/set-password`
   shows the link error instead of the form.
+- Invite works for one recipient but fails on a corporate domain: an email security scanner
+  prefetched the `ConfirmationURL` and consumed the single-use token. Switch the invite
+  template to the `token_hash` link documented in `README.md` so the app redeems it only
+  after the recipient presses **Continue**.
 - No release after a push: the commit message is not a Conventional Commit or contains no
   release-worthy type. The deploy still succeeds; rewrite the commit or create a release
   manually only when recovering.

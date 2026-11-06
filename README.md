@@ -117,6 +117,31 @@ Then send a new invitation; previously sent links keep the old destination. Loca
 invitations use the local Site URL from `supabase/config.toml` and appear in Mailpit at
 http://localhost:54324.
 
+### Invites blocked by corporate email scanners
+
+Some corporate email systems (for example Microsoft Defender Safe Links) open every link
+once to scan it. The default `{{ .ConfirmationURL }}` is a single-use token, so the scanner
+consumes it and the recipient sees "Email link is invalid or has expired" even though the
+email is new. If one recipient works and another on a corporate domain fails, this is the
+likely cause.
+
+The app supports a safer link that is only redeemed when the recipient presses **Continue**
+on `/set-password`. Change the cloud **Authentication → Email Templates → Invite user**
+template link to:
+
+```html
+<a
+  href="https://michielhbrand.github.io/TeamBuilder/set-password?token_hash={{ .TokenHash }}&type=invite"
+>
+  Set your password
+</a>
+```
+
+Local invitations can use `http://localhost:5173/set-password?token_hash={{ .TokenHash }}&type=invite`.
+The app calls `supabase.auth.verifyOtp({ token_hash, type })` from
+`src/stores/auth.ts` only after the recipient clicks, so scanning the email cannot spend the
+token.
+
 ## Local Supabase
 
 Local Supabase gives you a database, Auth, and Studio without touching the cloud project.

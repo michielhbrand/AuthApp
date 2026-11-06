@@ -14,6 +14,7 @@ const success = ref(false)
 const form = ref<{ validate: () => Promise<{ valid: boolean }> } | null>(null)
 
 const isInvite = computed(() => auth.passwordSetupRequired)
+const needsLinkConfirmation = computed(() => Boolean(auth.linkTokenHash))
 const eyebrow = computed(() => {
   if (isInvite.value) {
     return 'Invitation'
@@ -58,6 +59,15 @@ const confirmationRules = [
   (value: string) => value === password.value || 'Passwords do not match',
 ]
 
+async function confirmLink(): Promise<void> {
+  const verified = await auth.verifyLink()
+  if (!verified) {
+    return
+  }
+
+  await router.replace({ name: 'set-password' })
+}
+
 async function submit(): Promise<void> {
   const validation = await form.value?.validate()
   if (!validation?.valid) {
@@ -87,7 +97,26 @@ async function submit(): Promise<void> {
       </span>
     </div>
 
-    <v-alert v-if="!auth.isAuthenticated" class="mb-5" type="error">
+    <template v-if="needsLinkConfirmation">
+      <v-alert v-if="auth.error" class="mb-5" type="error">
+        {{ auth.error }}
+      </v-alert>
+      <v-alert v-else class="mb-5" type="info">
+        Confirm this invitation to continue to password setup.
+      </v-alert>
+
+      <v-btn block color="primary" :loading="auth.loading" size="large" @click="confirmLink">
+        Continue to set password
+        <v-icon end icon="mdi-arrow-right" />
+      </v-btn>
+
+      <div class="auth-note">
+        <v-icon icon="mdi-shield-lock-outline" size="18" />
+        <p>This one-time link is confirmed only when you press continue.</p>
+      </div>
+    </template>
+
+    <v-alert v-else-if="!auth.isAuthenticated" class="mb-5" type="error">
       {{
         auth.linkError ??
         'This invitation link is invalid or has expired. Ask an administrator to send a new invitation.'
@@ -140,7 +169,7 @@ async function submit(): Promise<void> {
       </div>
     </template>
 
-    <div v-if="!auth.isAuthenticated" class="auth-panel-footer">
+    <div v-if="!auth.isAuthenticated && !needsLinkConfirmation" class="auth-panel-footer">
       <span class="mono-label">Link expired?</span>
       <v-btn color="primary" variant="text" @click="router.replace('/')">Back to sign in</v-btn>
     </div>
