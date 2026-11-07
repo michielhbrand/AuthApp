@@ -1706,6 +1706,24 @@ body.applicant-drawer-open {
   margin-right: auto;
 }
 
+.confirm-dialog__message {
+  margin: 0;
+  color: var(--orbital-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.deadline-readout {
+  margin: -6px 2px 0;
+  color: var(--orbital-muted);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.deadline-readout--late {
+  color: var(--orbital-danger);
+}
+
 .column-manage {
   display: flex;
   flex-direction: column;
@@ -1714,7 +1732,7 @@ body.applicant-drawer-open {
 
 .column-manage__row {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto auto auto auto;
+  grid-template-columns: 20px minmax(0, 1fr) auto auto auto;
   gap: 8px;
   align-items: center;
 }

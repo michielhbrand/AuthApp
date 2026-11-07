@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { defaultApplicantStep } from '@/lib/pipeline'
+import { isValidEmail, isValidPhone } from '@/lib/validation'
 import { useBoardsStore } from '@/stores/boards'
 import type { Board } from '@/types/pipeline'
 
@@ -38,7 +40,7 @@ function syncForm(): void {
   currentRole.value = ''
   education.value = ''
   experience.value = ''
-  stepId.value = steps.value[0]?.id ?? ''
+  stepId.value = (props.board ? defaultApplicantStep(props.board)?.id : undefined) ?? ''
   localError.value = ''
 }
 
@@ -60,13 +62,17 @@ async function submit(): Promise<void> {
     return
   }
 
-  if (!email.value.trim() || !email.value.includes('@')) {
+  const emailValue = email.value.trim()
+
+  if (emailValue && !isValidEmail(emailValue)) {
     localError.value = 'Enter a valid email address.'
     return
   }
 
-  if (!phone.value.trim()) {
-    localError.value = 'Enter a phone number.'
+  const phoneValue = phone.value.trim()
+
+  if (phoneValue && !isValidPhone(phoneValue)) {
+    localError.value = 'Enter a phone number using digits only.'
     return
   }
 
@@ -75,8 +81,8 @@ async function submit(): Promise<void> {
   try {
     const created = await store.createApplicant(props.board.id, {
       name: name.value,
-      email: email.value,
-      phone: phone.value,
+      email: emailValue,
+      phone: phoneValue,
       currentRole: currentRole.value,
       education: education.value,
       experience: experience.value,
@@ -158,7 +164,7 @@ async function submit(): Promise<void> {
           <v-textarea
             v-model="education"
             class="orbital-field"
-            label="Career"
+            label="Education"
             variant="outlined"
             rows="3"
             auto-grow

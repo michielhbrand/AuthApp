@@ -288,6 +288,7 @@ src/
   lib/supabase.ts           Supabase client and environment validation
   lib/auth-link.ts          Detects invite/recovery links before Supabase consumes them
   lib/pipeline.ts           Pure pipeline helpers and summaries
+  lib/validation.ts         Email and phone validation helpers
   lib/boards-api.ts         Supabase reads/writes for boards, columns, and applicants
   stores/auth.ts            Session state, sign-in, sign-out, password setup
   stores/boards.ts          Persisted boards, columns, applicants, and actions
@@ -303,6 +304,7 @@ src/
   components/BoardColumn.vue One pipeline step column
   components/CandidateCard.vue Candidate summary and actions
   components/ApplicantDrawer.vue Editable applicant profile and notes
+  components/ConfirmDialog.vue Shared destructive-action confirmation
   components/PipelineBar.vue Per-step progress bar
   components/ThemeToggle.vue Light/dark mode toggle
   views/LoginView.vue       Login form

@@ -285,6 +285,36 @@ describe('boards store', () => {
     expect(store.candidateById('c2')).toBeUndefined()
   })
 
+  it('defaults new applicants to the Applied column', async () => {
+    mocks.fetchBoards.mockResolvedValue([
+      makeBoard({
+        steps: [
+          { id: 's1', name: 'Screening', position: 0 },
+          { id: 's2', name: 'Applied', position: 1 },
+        ],
+      }),
+    ])
+    const store = await initializedStore()
+    const board = store.boards[0]
+
+    expect(board).toBeDefined()
+    if (!board) return
+
+    mocks.createApplicant.mockResolvedValue(makeCandidate({ id: 'c2' }))
+
+    await store.createApplicant(board.id, {
+      name: 'Liam Price',
+      email: '',
+      phone: '',
+    })
+
+    expect(mocks.createApplicant).toHaveBeenCalledWith(
+      board.id,
+      's2',
+      expect.objectContaining({ name: 'Liam Price' }),
+    )
+  })
+
   it('derives past-deadline boards and totals', async () => {
     const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
     mocks.fetchBoards.mockResolvedValue([

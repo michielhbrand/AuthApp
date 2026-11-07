@@ -12,7 +12,7 @@ withDefaults(
 <template>
   <div class="brand-lockup">
     <span class="brand-mark" aria-hidden="true">
-      <v-icon icon="mdi-orbit" size="22" />
+      <v-icon icon="mdi-google-analytics" size="22" />
     </span>
     <span class="brand-copy">
       <span class="brand-name">TeamBuilder [Beta]</span>

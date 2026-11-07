@@ -3,12 +3,17 @@ import {
   daysInStep,
   daysSince,
   daysSinceApplied,
+  daysUntilDeadline,
+  defaultApplicantStep,
+  formatDeadline,
   groupBoards,
   isOverdue,
   nextStep,
+  parseDeadlineInput,
   previousStep,
   summariseBoard,
   summariseBoards,
+  workDaysUntilDeadline,
 } from '@/lib/pipeline'
 import type { Board, Candidate } from '@/types/pipeline'
 
@@ -69,6 +74,35 @@ describe('pipeline helpers', () => {
 
     expect(isOverdue(board({ deadline: '2026-11-30' }), now)).toBe(false)
     expect(isOverdue(board({ deadline: '2026-11-06' }), now)).toBe(true)
+  })
+
+  it('formats and parses deadlines as dd/mm/yyyy', () => {
+    expect(formatDeadline('2026-11-07')).toBe('07/11/2026')
+    expect(parseDeadlineInput('07/11/2026')).toBe('2026-11-07')
+    expect(parseDeadlineInput('7/11/2026')).toBe('2026-11-07')
+    expect(parseDeadlineInput('31/02/2026')).toBeUndefined()
+    expect(parseDeadlineInput('2026-11-07')).toBeUndefined()
+  })
+
+  it('counts calendar and working days until a deadline', () => {
+    const now = new Date('2026-11-07T12:00:00Z')
+
+    expect(daysUntilDeadline('2026-11-13', now)).toBe(6)
+    expect(workDaysUntilDeadline('2026-11-13', now)).toBe(5)
+    expect(daysUntilDeadline('2026-11-06', now)).toBe(-1)
+    expect(workDaysUntilDeadline('2026-11-06', now)).toBe(0)
+  })
+
+  it('defaults applicants to the Applied column', () => {
+    const item = board({
+      steps: [
+        { id: 's1', name: 'Screening', position: 0 },
+        { id: 's2', name: 'Applied', position: 1 },
+      ],
+    })
+
+    expect(defaultApplicantStep(item)?.id).toBe('s2')
+    expect(defaultApplicantStep(board())?.id).toBe('s1')
   })
 
   it('summarises active, closed, overdue, and per-step counts', () => {

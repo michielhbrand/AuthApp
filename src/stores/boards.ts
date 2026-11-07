@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import * as api from '@/lib/boards-api'
 import {
+  defaultApplicantStep,
   flattenBoards,
   groupBoards,
   nextStep,
@@ -31,8 +32,12 @@ const SAVE_DELAY_MS = 500
 function friendlyDataError(message: string): string {
   const normalized = message.toLowerCase()
 
-  if (normalized.includes('boards_name_lower_key') || normalized.includes('boards_name_unique')) {
-    return 'A board with that name already exists.'
+  if (
+    normalized.includes('boards_department_name_lower_key') ||
+    normalized.includes('boards_name_lower_key') ||
+    normalized.includes('boards_name_unique')
+  ) {
+    return 'A board with that name already exists in this department.'
   }
 
   if (normalized.includes('applicants_board_email_lower_key')) {
@@ -271,7 +276,7 @@ export const useBoardsStore = defineStore('boards', () => {
   async function createApplicant(boardId: string, input: ApplicantInput): Promise<boolean> {
     error.value = null
     const board = boardById(boardId)
-    const defaultStep = board?.steps[0]
+    const defaultStep = board ? defaultApplicantStep(board) : undefined
 
     if (!board || !defaultStep) {
       error.value = 'Add a column to this board before creating an applicant.'

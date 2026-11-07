@@ -8,7 +8,7 @@ export const departments = [
   'Marketing',
 ] as const
 
-export type Department = (typeof departments)[number]
+export type Department = string
 
 export type CandidateStatus = 'active' | 'hired' | 'rejected'
 

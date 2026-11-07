@@ -69,6 +69,7 @@ npm run build
 - `src/lib/boards-api.ts` — Supabase reads and writes for boards, columns, and applicants.
 - `src/lib/pipeline.ts` — pure pipeline helpers for steps, deadlines, summaries, and
   department grouping.
+- `src/lib/validation.ts` — shared email and phone validation helpers.
 - `src/stores/boards.ts` — persisted board, column, and applicant state and actions.
 - `supabase/migrations/` — Postgres tables, RLS policies, indexes, and board RPC functions.
 - `src/router/index.ts` — routes and the auth guard.
@@ -83,7 +84,8 @@ npm run build
 - `src/components/BoardColumn.vue` — one pipeline step column.
 - `src/components/CandidateCard.vue` — candidate summary and pipeline actions.
 - `src/components/ApplicantDrawer.vue` — right-side editable applicant profile with favourite,
-  career, and work-experience notes.
+  education, and work-experience notes.
+- `src/components/ConfirmDialog.vue` — shared destructive-action confirmation dialog.
 - `src/components/PipelineBar.vue` — per-step candidate progress bar.
 - `src/views/LoginView.vue` — login form and validation.
 - `src/views/SetPasswordView.vue` — invite and password update form.
@@ -161,7 +163,9 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
   through `/set-password`.
 - Keep the cloud Site URL aligned with the Pages origin so invite links return to the app.
   Local invitations use `supabase/config.toml` and Mailpit at `http://localhost:54324`.
-- Board data uses `public.boards`, `public.board_columns`, and `public.applicants`. If you
+- Board data uses `public.boards`, `public.board_columns`, and `public.applicants`. Board
+  names are unique within a department; applicant email and phone are optional and unique
+  per board only when filled. New applicants default to the `Applied` column. If you
   add a table, add a migration under `supabase/migrations`, enable Row Level Security, write
   policies for the intended roles, explicitly grant table privileges to `authenticated`, and
   revoke them from `anon`. RLS does not replace table grants. Do not expose board data to

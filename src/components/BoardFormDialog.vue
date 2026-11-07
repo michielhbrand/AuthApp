@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import {
+  daysUntilDeadline,
+  formatDeadline,
+  parseDeadlineInput,
+  workDaysUntilDeadline,
+} from '@/lib/pipeline'
 import { useBoardsStore } from '@/stores/boards'
-import { departments, type Board, type Department } from '@/types/pipeline'
+import type { Board, Department } from '@/types/pipeline'
 
 const props = defineProps<{
   modelValue: boolean
@@ -16,25 +23,71 @@ const emit = defineEmits<{
 
 const store = useBoardsStore()
 const submitting = ref(false)
+const deleting = ref(false)
 const localError = ref('')
 const name = ref('')
-const department = ref<Department>('Engineering')
+const department = ref<Department>('')
 const deadline = ref('')
 const openPositions = ref<number>(1)
+const confirmDeleteOpen = ref(false)
 
 const open = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value),
 })
 
+const departmentOptions = computed(() =>
+  [...new Set(store.boards.map((item) => item.department))].sort((a, b) => a.localeCompare(b)),
+)
+
+const deadlineIso = computed(() => parseDeadlineInput(deadline.value))
+const deadlineIsPast = computed(() => {
+  const iso = deadlineIso.value
+  return iso ? daysUntilDeadline(iso) < 0 : false
+})
+
+const deadlineHint = computed(() => {
+  if (!deadline.value.trim()) {
+    return ''
+  }
+
+  const iso = deadlineIso.value
+
+  if (!iso) {
+    return 'Enter a valid date as dd/mm/yyyy.'
+  }
+
+  const days = daysUntilDeadline(iso)
+  const dayLabel = days === 1 ? 'day' : 'days'
+
+  if (days < 0) {
+    const pastDays = Math.abs(days)
+    return `${pastDays} ${pastDays === 1 ? 'day' : 'days'} past deadline.`
+  }
+
+  if (days === 0) {
+    return 'Deadline is today.'
+  }
+
+  const workDays = workDaysUntilDeadline(iso)
+  const workDayLabel = workDays === 1 ? 'working day' : 'working days'
+
+  return `${days} ${dayLabel} to deadline · ${workDays} ${workDayLabel}`
+})
+
+const deleteMessage = computed(
+  () =>
+    `Delete "${props.board?.name ?? 'this board'}"? All columns and applicants will be permanently deleted. This cannot be undone.`,
+)
+
 function defaultDeadline(): string {
-  return new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10)
+  return formatDeadline(new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10))
 }
 
 function syncForm(): void {
   name.value = props.board?.name ?? ''
-  department.value = props.board?.department ?? 'Engineering'
-  deadline.value = props.board?.deadline ?? defaultDeadline()
+  department.value = props.board?.department ?? departmentOptions.value[0] ?? ''
+  deadline.value = props.board ? formatDeadline(props.board.deadline) : defaultDeadline()
   openPositions.value = props.board?.openPositions ?? 1
   localError.value = ''
 }
@@ -48,21 +101,21 @@ watch(
   },
 )
 
-async function removeBoard(): Promise<void> {
+function requestDelete(): void {
+  confirmDeleteOpen.value = true
+}
+
+async function deleteBoard(): Promise<void> {
   const board = props.board
 
-  if (
-    !board ||
-    !window.confirm(
-      `Delete "${board.name}"? All columns and applicants will be permanently deleted.`,
-    )
-  ) {
+  if (!board) {
     return
   }
 
-  submitting.value = true
+  deleting.value = true
   const deleted = await store.deleteBoard(board.id)
-  submitting.value = false
+  deleting.value = false
+  confirmDeleteOpen.value = false
 
   if (deleted) {
     emit('deleted', board.id)
@@ -78,8 +131,17 @@ async function submit(): Promise<void> {
     return
   }
 
-  if (!deadline.value) {
-    localError.value = 'Choose a deadline.'
+  const departmentValue = department.value.trim()
+
+  if (!departmentValue) {
+    localError.value = 'Choose or enter a department.'
+    return
+  }
+
+  const deadlineValue = parseDeadlineInput(deadline.value)
+
+  if (!deadlineValue) {
+    localError.value = 'Enter the deadline as dd/mm/yyyy.'
     return
   }
 
@@ -96,8 +158,8 @@ async function submit(): Promise<void> {
     if (props.board) {
       const updated = await store.updateBoard(props.board.id, {
         name: name.value.trim(),
-        department: department.value,
-        deadline: deadline.value,
+        department: departmentValue,
+        deadline: deadlineValue,
         openPositions: positions,
       })
 
@@ -109,8 +171,8 @@ async function submit(): Promise<void> {
     } else {
       const board = await store.createBoard({
         name: name.value.trim(),
-        department: department.value,
-        deadline: deadline.value,
+        department: departmentValue,
+        deadline: deadlineValue,
         openPositions: positions,
       })
 
@@ -156,21 +218,31 @@ async function submit(): Promise<void> {
           />
 
           <div class="orbital-dialog__grid">
-            <v-select
+            <v-combobox
               v-model="department"
               class="orbital-field"
               label="Department"
-              :items="departments"
+              :items="departmentOptions"
               variant="outlined"
+              hide-no-data
+              autocomplete="off"
             />
             <v-text-field
               v-model="deadline"
               class="orbital-field"
               label="Deadline"
-              type="date"
+              placeholder="dd/mm/yyyy"
               variant="outlined"
             />
           </div>
+
+          <p
+            v-if="deadlineHint"
+            class="deadline-readout"
+            :class="{ 'deadline-readout--late': deadlineIsPast }"
+          >
+            {{ deadlineHint }}
+          </p>
 
           <v-text-field
             v-model.number="openPositions"
@@ -189,8 +261,8 @@ async function submit(): Promise<void> {
             variant="text"
             color="error"
             prepend-icon="mdi-delete-outline"
-            :disabled="submitting"
-            @click="removeBoard"
+            :disabled="submitting || deleting"
+            @click="requestDelete"
           >
             Delete board
           </v-btn>
@@ -202,4 +274,14 @@ async function submit(): Promise<void> {
       </form>
     </v-card>
   </v-dialog>
+
+  <ConfirmDialog
+    v-model="confirmDeleteOpen"
+    eyebrow="Delete board"
+    title="Delete this board?"
+    :message="deleteMessage"
+    confirm-label="Delete board"
+    :loading="deleting"
+    @confirm="deleteBoard"
+  />
 </template>

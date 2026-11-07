@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { initials as getInitials } from '@/lib/pipeline'
+import { isValidEmail, isValidPhone } from '@/lib/validation'
 import { useBoardsStore, type EditableCandidateField } from '@/stores/boards'
 
 const props = defineProps<{
@@ -21,6 +23,24 @@ const open = computed({
   get: () => props.modelValue,
   set: (value: boolean) => emit('update:modelValue', value),
 })
+const confirmDeleteOpen = ref(false)
+const deleting = ref(false)
+const form = reactive<Record<EditableCandidateField, string>>({
+  name: '',
+  email: '',
+  phone: '',
+  currentRole: '',
+  education: '',
+  experience: '',
+})
+const fieldErrors = reactive({
+  email: '',
+  phone: '',
+})
+
+const deleteMessage = computed(
+  () => `Delete ${candidate.value?.name ?? 'this applicant'}? This cannot be undone.`,
+)
 
 const textSections = [
   { key: 'education' as const, title: 'Education', fieldLabel: 'Education details' },
@@ -31,20 +51,63 @@ const textSections = [
   },
 ]
 
-function updateField(field: EditableCandidateField, value: unknown): void {
-  if (candidate.value) {
-    store.updateCandidateField(candidate.value.id, field, String(value ?? ''))
-  }
-}
-
-async function removeApplicant(): Promise<void> {
+function syncForm(): void {
   const current = candidate.value
 
-  if (!current || !window.confirm(`Delete ${current.name}? This cannot be undone.`)) {
+  form.name = current?.name ?? ''
+  form.email = current?.email ?? ''
+  form.phone = current?.phone ?? ''
+  form.currentRole = current?.currentRole ?? ''
+  form.education = current?.education ?? ''
+  form.experience = current?.experience ?? ''
+  fieldErrors.email = ''
+  fieldErrors.phone = ''
+}
+
+function updateField(field: EditableCandidateField, value: unknown): void {
+  const current = candidate.value
+
+  if (!current) {
     return
   }
 
+  const next = String(value ?? '')
+  form[field] = next
+
+  if (field === 'email') {
+    fieldErrors.email = next.trim() && !isValidEmail(next) ? 'Enter a valid email address.' : ''
+
+    if (fieldErrors.email) {
+      return
+    }
+  }
+
+  if (field === 'phone') {
+    fieldErrors.phone = next.trim() && !isValidPhone(next) ? 'Use digits only.' : ''
+
+    if (fieldErrors.phone) {
+      return
+    }
+  }
+
+  store.updateCandidateField(current.id, field, next)
+}
+
+function requestDeleteApplicant(): void {
+  confirmDeleteOpen.value = true
+}
+
+async function confirmDeleteApplicant(): Promise<void> {
+  const current = candidate.value
+
+  if (!current) {
+    return
+  }
+
+  deleting.value = true
   const deleted = await store.deleteApplicant(current.id)
+  deleting.value = false
+  confirmDeleteOpen.value = false
 
   if (deleted) {
     open.value = false
@@ -70,6 +133,12 @@ function setPageScrollLocked(locked: boolean): void {
     body.style.removeProperty('overscroll-behavior')
   }
 }
+
+watch([() => props.modelValue, () => props.candidateId], ([value]) => {
+  if (value) {
+    syncForm()
+  }
+})
 
 watch(
   () => props.modelValue,
@@ -137,28 +206,30 @@ onBeforeUnmount(() => setPageScrollLocked(false))
               <v-text-field
                 class="applicant-field--wide"
                 label="Full name"
-                :model-value="candidate.name"
+                :model-value="form.name"
                 hide-details
                 @update:model-value="updateField('name', $event)"
               />
               <v-text-field
                 label="Email"
                 type="email"
-                :model-value="candidate.email"
-                hide-details
+                :model-value="form.email"
+                :error-messages="fieldErrors.email"
+                hide-details="auto"
                 @update:model-value="updateField('email', $event)"
               />
               <v-text-field
                 label="Phone number"
                 type="tel"
-                :model-value="candidate.phone"
-                hide-details
+                :model-value="form.phone"
+                :error-messages="fieldErrors.phone"
+                hide-details="auto"
                 @update:model-value="updateField('phone', $event)"
               />
               <v-text-field
                 class="applicant-field--wide"
                 label="Current role"
-                :model-value="candidate.currentRole"
+                :model-value="form.currentRole"
                 hide-details
                 @update:model-value="updateField('currentRole', $event)"
               />
@@ -170,7 +241,7 @@ onBeforeUnmount(() => setPageScrollLocked(false))
             <v-textarea
               class="applicant-notes-field"
               :label="section.fieldLabel"
-              :model-value="candidate[section.key]"
+              :model-value="form[section.key]"
               auto-grow
               hide-details
               rows="4"
@@ -184,7 +255,7 @@ onBeforeUnmount(() => setPageScrollLocked(false))
             variant="text"
             color="error"
             prepend-icon="mdi-delete-outline"
-            @click="removeApplicant"
+            @click="requestDeleteApplicant"
           >
             Delete applicant
           </v-btn>
@@ -192,4 +263,14 @@ onBeforeUnmount(() => setPageScrollLocked(false))
       </div>
     </v-navigation-drawer>
   </Teleport>
+
+  <ConfirmDialog
+    v-model="confirmDeleteOpen"
+    eyebrow="Delete applicant"
+    title="Delete this applicant?"
+    :message="deleteMessage"
+    confirm-label="Delete applicant"
+    :loading="deleting"
+    @confirm="confirmDeleteApplicant"
+  />
 </template>

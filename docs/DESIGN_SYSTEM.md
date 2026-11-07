@@ -24,23 +24,24 @@ scale, Orbital can read as a generic SaaS theme. Use the motif and the tokens de
 
 ## Source of truth
 
-| Concern            | File                                       |
-| ------------------ | ------------------------------------------ |
-| CSS tokens         | `src/styles/orbital.css`                   |
-| Vuetify themes     | `src/plugins/vuetify.ts`                   |
-| Fonts              | `src/main.ts` and `package.json`           |
-| Brand lockup       | `src/components/BrandMark.vue`             |
-| Auth page shell    | `src/components/AuthShell.vue`             |
-| App page shell     | `src/components/AppShell.vue`              |
-| Board list         | `src/components/BoardList.vue`             |
-| Board switcher     | `src/components/BoardSwitcher.vue`         |
-| Board column       | `src/components/BoardColumn.vue`           |
-| Candidate card     | `src/components/CandidateCard.vue`         |
-| Applicant drawer   | `src/components/ApplicantDrawer.vue`       |
-| Progress bar       | `src/components/PipelineBar.vue`           |
-| Theme toggle       | `src/components/ThemeToggle.vue`           |
-| Visual exploration | `design/ui-directions.html`                |
-| Board concept      | `design/hiring-pipeline-step-columns.html` |
+| Concern             | File                                       |
+| ------------------- | ------------------------------------------ |
+| CSS tokens          | `src/styles/orbital.css`                   |
+| Vuetify themes      | `src/plugins/vuetify.ts`                   |
+| Fonts               | `src/main.ts` and `package.json`           |
+| Brand lockup        | `src/components/BrandMark.vue`             |
+| Auth page shell     | `src/components/AuthShell.vue`             |
+| App page shell      | `src/components/AppShell.vue`              |
+| Board list          | `src/components/BoardList.vue`             |
+| Board switcher      | `src/components/BoardSwitcher.vue`         |
+| Board column        | `src/components/BoardColumn.vue`           |
+| Candidate card      | `src/components/CandidateCard.vue`         |
+| Applicant drawer    | `src/components/ApplicantDrawer.vue`       |
+| Confirmation dialog | `src/components/ConfirmDialog.vue`         |
+| Progress bar        | `src/components/PipelineBar.vue`           |
+| Theme toggle        | `src/components/ThemeToggle.vue`           |
+| Visual exploration  | `design/ui-directions.html`                |
+| Board concept       | `design/hiring-pipeline-step-columns.html` |
 
 The prototype is a reference, not an application dependency. Production styling lives in the
 files above. Change the tokens there first; do not copy one-off hex values into views.
@@ -133,7 +134,8 @@ The motif is one thin off-canvas circle, not a decorative illustration system.
 - Auth panels may repeat a smaller accent arc in the top-right corner at `10%` opacity.
 - Never place a ring behind form text, never animate it continuously, and never use more than
   two page rings plus one panel arc.
-- The `mdi-orbit` icon in the brand mark is the only filled orbital glyph.
+- The `mdi-google-analytics` icon in the brand mark is the only filled glyph in the
+  application identity.
 
 The implementation classes are `.orbital-orbit`, `.orbital-orbit--a`,
 `.orbital-orbit--b`, and the `.auth-panel::after` arc.
@@ -269,9 +271,13 @@ class. Keep the rules attached to the field.
 - Use `.orbital-dialog__grid` for two-column field pairs; it collapses to one column at
   `720px`.
 - Edit-board dialogs place a destructive text button on the left of the actions. Deleting a
-  board requires confirmation because it also deletes its columns and applicants.
+  board opens `ConfirmDialog` because it also deletes its columns and applicants.
+- The board form uses a department combobox seeded from departments that already have
+  boards, while still allowing a new department name. Deadlines are entered and displayed as
+  `dd/mm/yyyy`, with a live readout of calendar and working days remaining.
 - `ColumnDialog` uses `.column-manage__row` for ordered name fields with move up, move down,
-  save, and delete actions. The first column cannot be moved or deleted.
+  and delete actions. Column names save automatically, and the first column cannot be moved
+  or deleted.
 
 ### Applicant drawer
 
@@ -279,16 +285,20 @@ class. Keep the rules attached to the field.
   right at `50vw` desktop.
 - The header keeps the initials avatar, applicant name, current role metadata, a star
   favourite button (`mdi-star` / `mdi-star-outline` with `aria-pressed`), and a close button.
-- Editable basic fields use the standard `orbital-field` treatment. Career and work
+- Editable basic fields use the standard `orbital-field` treatment. Education and work
   experience each use one auto-growing `v-textarea` with the same field treatment rather
   than structured timeline items.
+- Email is optional and must be valid when present. Phone is optional and accepts digits
+  only. Invalid values show a field error and are not persisted.
 - The drawer is backed by Postgres. The note at the end tells the user that changes save
-  automatically, and a destructive text button deletes the applicant after confirmation.
+  automatically, and a destructive text button opens `ConfirmDialog` before deleting the
+  applicant.
 
 ### Brand, avatar, and status
 
 - `BrandMark` is the only application identity lockup. It combines the accent square, the
-  `mdi-orbit` icon, `TeamBuilder`, and an uppercase mono context line.
+  `mdi-google-analytics` icon, `TeamBuilder`, and an uppercase mono context line. The browser
+  favicon uses the same icon on an accent square.
 - Use `Identity console` on auth pages and `Hiring workspace` on protected pages.
 - The avatar is a `38px` accent-soft circle with two initials. It is decorative; never make
   it the only way to identify the account.

@@ -57,21 +57,87 @@ export function isOverdue(board: Board, now: Date = new Date()): boolean {
   return board.deadline < now.toISOString().slice(0, 10)
 }
 
-export function formatDeadline(deadline: string): string {
+function parseIsoDate(deadline: string): Date | undefined {
   const parts = deadline.split('-').map(Number)
 
   if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
-    return deadline
+    return undefined
   }
 
   const [year, month, day] = parts as [number, number, number]
+  return new Date(Date.UTC(year, month - 1, day))
+}
 
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
+export function formatDeadline(deadline: string): string {
+  const parts = deadline.split('-')
+
+  if (parts.length !== 3) {
+    return deadline
+  }
+
+  const [year, month, day] = parts
+
+  return `${day?.padStart(2, '0')}/${month?.padStart(2, '0')}/${year}`
+}
+
+export function parseDeadlineInput(value: string): string | undefined {
+  const match = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+
+  if (!match) {
+    return undefined
+  }
+
+  const day = Number(match[1])
+  const month = Number(match[2])
+  const year = Number(match[3])
+  const date = new Date(Date.UTC(year, month - 1, day))
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return undefined
+  }
+
+  return date.toISOString().slice(0, 10)
+}
+
+export function daysUntilDeadline(deadline: string, now: Date = new Date()): number {
+  const target = parseIsoDate(deadline)
+
+  if (!target) {
+    return 0
+  }
+
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+
+  return Math.round((target.getTime() - today) / DAY_MS)
+}
+
+export function workDaysUntilDeadline(deadline: string, now: Date = new Date()): number {
+  const days = daysUntilDeadline(deadline, now)
+
+  if (days <= 0) {
+    return 0
+  }
+
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  let workDays = 0
+
+  for (let offset = 1; offset <= days; offset += 1) {
+    const day = new Date(today + offset * DAY_MS).getUTCDay()
+
+    if (day !== 0 && day !== 6) {
+      workDays += 1
+    }
+  }
+
+  return workDays
+}
+
+export function defaultApplicantStep(board: Board): PipelineStep | undefined {
+  return board.steps.find((step) => step.name.trim().toLowerCase() === 'applied') ?? board.steps[0]
 }
 
 export function nextStep(board: Board, candidate: Candidate): PipelineStep | undefined {

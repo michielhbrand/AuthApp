@@ -107,16 +107,20 @@ without them. It also rejects a `sb_secret_` key defensively.
 
 ## Board data
 
-The schema lives in `supabase/migrations/20261106000000_create_hiring_tables.sql`:
+The schema lives in `supabase/migrations/`:
 
-- `public.boards` — unique name, department, open positions, deadline, timestamps.
+- `public.boards` — free-text department, name unique per department, open positions,
+  deadline, timestamps.
 - `public.board_columns` — board, unique name per board, ordered `position`.
 - `public.applicants` — board, assigned column, contact details, current role, free-text
-  career and work experience, favourite flag, status, `applied_at`, and `step_entered_at`.
-  Email and phone are unique per board.
+  education and work experience, favourite flag, status, `applied_at`, and
+  `step_entered_at`. Email and phone are optional; when present they are unique per board.
 
 The composite applicant foreign key `(board_id, column_id)` guarantees that an applicant is
-assigned to a column on the same board. A trigger keeps `updated_at` current. SQL functions
+assigned to a column on the same board. New applicants default to the column named
+`Applied`, falling back to the first column when it has been renamed. Email and phone use
+partial unique indexes so multiple applicants can leave them blank. A trigger keeps
+`updated_at` current. SQL functions
 `create_board`, `add_board_column`, `reorder_board_columns`, and `delete_board_column` make
 multi-row changes atomic.
 `delete_board_column` moves the column's applicants to the first column, and the first column

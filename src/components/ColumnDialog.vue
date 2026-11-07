@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useBoardsStore } from '@/stores/boards'
 import type { Board, PipelineStep } from '@/types/pipeline'
 
@@ -15,8 +15,8 @@ const emit = defineEmits<{
 const store = useBoardsStore()
 const drafts = ref<Record<string, string>>({})
 const newColumn = ref('')
-const savingId = ref<string | null>(null)
 const movingId = ref<string | null>(null)
+const renameTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
 const open = computed({
   get: () => props.modelValue,
@@ -25,13 +25,51 @@ const open = computed({
 
 const steps = computed(() => props.board?.steps ?? [])
 
+function clearRenameTimer(id: string): void {
+  const timer = renameTimers.get(id)
+
+  if (timer) {
+    clearTimeout(timer)
+    renameTimers.delete(id)
+  }
+}
+
+function clearRenameTimers(): void {
+  for (const id of renameTimers.keys()) {
+    clearRenameTimer(id)
+  }
+}
+
 function syncDrafts(): void {
+  clearRenameTimers()
   drafts.value = Object.fromEntries(steps.value.map((step) => [step.id, step.name]))
   newColumn.value = ''
 }
 
 function setDraft(id: string, value: unknown): void {
   drafts.value[id] = String(value ?? '')
+  const step = steps.value.find((item) => item.id === id)
+
+  if (step) {
+    scheduleRename(step)
+  }
+}
+
+function scheduleRename(step: PipelineStep): void {
+  const name = (drafts.value[step.id] ?? '').trim()
+  clearRenameTimer(step.id)
+
+  if (!name || name === step.name) {
+    return
+  }
+
+  renameTimers.set(
+    step.id,
+    setTimeout(() => {
+      renameTimers.delete(step.id)
+      void rename(step)
+    }, 700),
+  )
 }
 
 watch([() => props.modelValue, () => props.board?.id], ([value]) => {
@@ -40,19 +78,36 @@ watch([() => props.modelValue, () => props.board?.id], ([value]) => {
   }
 })
 
+watch(
+  () => props.modelValue,
+  (value) => {
+    if (!value) {
+      for (const step of steps.value) {
+        if (renameTimers.has(step.id)) {
+          void rename(step)
+        }
+      }
+    }
+  },
+)
+
 async function rename(step: PipelineStep): Promise<void> {
+  clearRenameTimer(step.id)
   const name = (drafts.value[step.id] ?? '').trim()
 
-  if (!name || name === step.name) {
+  if (!name) {
+    drafts.value[step.id] = step.name
     return
   }
 
-  savingId.value = step.id
+  if (name === step.name) {
+    return
+  }
+
   const saved = await store.renameColumn(props.board?.id ?? '', step.id, name)
-  savingId.value = null
 
   if (saved) {
-    syncDrafts()
+    drafts.value[step.id] = name
   }
 }
 
@@ -111,6 +166,8 @@ async function remove(step: PipelineStep): Promise<void> {
     syncDrafts()
   }
 }
+
+onBeforeUnmount(clearRenameTimers)
 </script>
 
 <template>
@@ -130,8 +187,8 @@ async function remove(step: PipelineStep): Promise<void> {
         </v-alert>
 
         <p class="column-manage__hint">
-          The first column is fixed as the fallback for applicants whose column is deleted. Deleting
-          a column moves its applicants to the first column.
+          Column names save automatically. The first column is fixed as the fallback for applicants
+          whose column is deleted. Deleting a column moves its applicants to the first column.
         </p>
 
         <div class="column-manage">
@@ -144,6 +201,7 @@ async function remove(step: PipelineStep): Promise<void> {
               density="compact"
               hide-details
               @update:model-value="setDraft(step.id, $event)"
+              @blur="rename(step)"
               @keyup.enter="rename(step)"
             />
             <v-btn
@@ -161,14 +219,6 @@ async function remove(step: PipelineStep): Promise<void> {
               :loading="movingId === step.id"
               :disabled="index === 0 || index === steps.length - 1"
               @click="move(step, 1)"
-            />
-            <v-btn
-              icon="mdi-content-save-outline"
-              variant="text"
-              aria-label="Save column name"
-              :loading="savingId === step.id"
-              :disabled="(drafts[step.id] ?? step.name) === step.name"
-              @click="rename(step)"
             />
             <v-btn
               icon="mdi-delete-outline"
