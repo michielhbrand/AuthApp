@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
-import { countOverTarget } from '@/lib/pipeline'
+import { isOverdue } from '@/lib/pipeline'
 import type { BoardGroup } from '@/types/pipeline'
 
 const props = defineProps<{
@@ -24,7 +24,7 @@ const filteredGroups = computed(() => {
     .map((group) => ({
       department: group.department,
       boards: group.boards.filter(
-        (board) => !term || `${board.title} ${board.department}`.toLowerCase().includes(term),
+        (board) => !term || `${board.name} ${board.department}`.toLowerCase().includes(term),
       ),
     }))
     .filter((group) => group.boards.length > 0)
@@ -66,11 +66,11 @@ defineExpose({ open })
         v-bind="menuProps"
         class="board-switcher"
         type="button"
-        :aria-label="`Switch board. Current board: ${activeBoard?.title ?? 'unknown'}`"
+        :aria-label="`Switch board. Current board: ${activeBoard?.name ?? 'unknown'}`"
       >
         <span class="board-switcher__label">
           <span class="mono-label">Switch board</span>
-          <span class="board-switcher__title">{{ activeBoard?.title }}</span>
+          <span class="board-switcher__title">{{ activeBoard?.name }}</span>
         </span>
         <v-icon icon="mdi-chevron-down" size="18" />
       </button>
@@ -103,10 +103,8 @@ defineExpose({ open })
             :aria-current="board.id === activeBoardId ? 'page' : undefined"
             @click="close"
           >
-            <span class="board-switcher__option-title">{{ board.title }}</span>
-            <span v-if="countOverTarget(board)" class="board-switcher__option-meta">
-              {{ countOverTarget(board) }} over
-            </span>
+            <span class="board-switcher__option-title">{{ board.name }}</span>
+            <span v-if="isOverdue(board)" class="board-switcher__option-meta"> Past due </span>
           </RouterLink>
         </section>
       </div>

@@ -4,7 +4,8 @@ A Vue 3 + Supabase hiring pipeline workspace: email/password sign-in, invited us
 choose their own password, persisted sessions, a protected hiring portal, and sign-out. The
 portal has a pipeline overview, role boards grouped by department, a step-column board for
 each role, and an account page. The frontend is deployed to GitHub Pages with GitHub
-Actions. Board data is deterministic in-memory dummy data; Supabase is used only for auth.
+Actions. Boards, pipeline columns, and applicants are stored in Supabase Postgres and loaded
+through Pinia.
 
 - **Live demo:** https://michielhbrand.github.io/TeamBuilder/
 - **Repository:** https://github.com/michielhbrand/TeamBuilder
@@ -28,10 +29,11 @@ Actions. Board data is deterministic in-memory dummy data; Supabase is used only
 - A router guard that protects the hiring portal
 - A pipeline overview at `/overview` with workload and attention summaries
 - Role boards grouped by department at `/boards`
-- A step-column pipeline for each role with candidate cards and over-target flags
-- A right-side applicant drawer with editable contact details, a favourite toggle, and
-  education / work-experience notes
-- Interactive in-memory candidate actions: advance, move, reject, hire, and reopen
+- A step-column pipeline for each role with candidate cards and deadline indicators
+- Board creation and editing, including ordered pipeline columns
+- Applicant creation per board with a right-side editable profile, favourite toggle, and
+  career / work-experience notes
+- Persisted candidate actions: advance, move, reject, hire, reopen, and delete
 - An account page with non-sensitive session and identity details
 - Sign-out and redirect back to the login screen
 - Build-time environment injection from GitHub Actions secrets
@@ -76,9 +78,20 @@ directions.
    - Redirect URLs: `http://localhost:5173/` and
      `https://michielhbrand.github.io/TeamBuilder/`
 4. In **Authentication → Sign In / Providers → Email**, disable new user sign-ups.
-5. In **Authentication → Users**, either add a demo user with auto-confirm enabled or use
+5. Apply the database migration from this repository:
+
+   ```bash
+   npx supabase link --project-ref <project-ref>
+   npm run supabase:push
+   ```
+
+   The migrations create the `boards`, `board_columns`, and `applicants` tables, enable
+   Row Level Security, add authenticated-user policies, and explicitly grant table
+   privileges to `authenticated` while revoking them from `anon`.
+
+6. In **Authentication → Users**, either add a demo user with auto-confirm enabled or use
    **Invite user** so the recipient chooses their own password.
-6. Create a local environment file:
+7. Create a local environment file:
 
    ```bash
    cp .env.example .env.local
@@ -86,7 +99,7 @@ directions.
 
    Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` to the cloud values.
 
-7. Install and run:
+8. Install and run:
 
    ```bash
    nvm use
@@ -94,8 +107,8 @@ directions.
    npm run dev
    ```
 
-8. Sign in with the demo user. The login route is `/`; the protected landing page is
-   `/overview`.
+9. Sign in with the demo user. The login route is `/`; the protected landing page is
+   `/overview`. Create the first board from **Boards → New board**.
 
 > The publishable key is designed to be public. Never put a Supabase secret key
 > (`sb_secret_...`) or a legacy `service_role` key in a `VITE_*` variable.
@@ -152,7 +165,11 @@ Docker must be running.
 ```bash
 npm run supabase:start
 npm run supabase:status
+npm run supabase:reset
 ```
+
+`supabase db reset` applies everything in `supabase/migrations/` to the local database. Run
+it after pulling new migrations.
 
 `supabase status` prints the local API URL and publishable key. Put them in `.env.local`:
 
@@ -203,6 +220,8 @@ Supabase URL and publishable key.
 | `npm run supabase:start`  | Start the local Supabase stack          |
 | `npm run supabase:status` | Show local URL and keys                 |
 | `npm run supabase:stop`   | Stop the local Supabase stack           |
+| `npm run supabase:reset`  | Reset local DB and apply migrations     |
+| `npm run supabase:push`   | Push migrations to the linked project   |
 
 ## GitHub Actions secrets
 
@@ -269,15 +288,18 @@ src/
   lib/supabase.ts           Supabase client and environment validation
   lib/auth-link.ts          Detects invite/recovery links before Supabase consumes them
   lib/pipeline.ts           Pure pipeline helpers and summaries
+  lib/boards-api.ts         Supabase reads/writes for boards, columns, and applicants
   stores/auth.ts            Session state, sign-in, sign-out, password setup
-  stores/boards.ts          In-memory boards and candidate actions
-  data/boards.ts            Deterministic seeded dummy board data
+  stores/boards.ts          Persisted boards, columns, applicants, and actions
   types/pipeline.ts         Board, step, candidate, and summary types
   router/index.ts           Routes and authentication guard
   components/AppShell.vue   Top-bar navigation for protected pages
   components/AuthShell.vue  Shared Orbital auth layout
   components/BrandMark.vue  TeamBuilder brand lockup
   components/BoardList.vue  Searchable boards grouped by department
+  components/BoardFormDialog.vue Create/edit board fields
+  components/ColumnDialog.vue Add, rename, reorder, and delete pipeline columns
+  components/ApplicantFormDialog.vue Create an applicant on a board
   components/BoardColumn.vue One pipeline step column
   components/CandidateCard.vue Candidate summary and actions
   components/ApplicantDrawer.vue Editable applicant profile and notes
@@ -295,6 +317,7 @@ scripts/
   postbuild.mjs             GitHub Pages 404 fallback and .nojekyll
   validate-env.mjs          Deploy-time environment validation
 supabase/config.toml        Local Supabase configuration
+supabase/migrations/        Postgres schema, RLS policies, and board RPC functions
 design/ui-directions.html   UI direction exploration
 design/hiring-pipeline-step-columns.html  Board concept reference
 docs/                       Architecture, design system, and decision records
@@ -306,9 +329,12 @@ docs/                       Architecture, design system, and decision records
   by this project.
 - Sessions are stored in browser storage by `@supabase/supabase-js`. Treat the app as
   vulnerable to XSS and keep dependencies and content secure.
-- No database tables exist yet. Board data is dummy data held in Pinia memory and resets on
-  reload. If you add tables, enable Row Level Security and write policies for the `anon` and
-  `authenticated` roles.
+- Board data lives in `public.boards`, `public.board_columns`, and `public.applicants`.
+  Row Level Security restricts all access to authenticated users; every signed-in user shares
+  the same workspace. The anonymous role has no access.
+- Delete operations are permanent. Deleting a board cascades to its columns and applicants;
+  deleting an applicant removes the row; deleting a column reassigns its applicants to the
+  first column. The first column cannot be deleted or moved.
 - Sign-ups are disabled. Administrators create accounts or send invitations from the
   Supabase dashboard or local Studio.
 

@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import PipelineBar from '@/components/PipelineBar.vue'
-import { activeCandidates, countOverTarget, summariseBoard } from '@/lib/pipeline'
+import { activeCandidates, formatDeadline, isOverdue, summariseBoard } from '@/lib/pipeline'
 import type { Board, BoardGroup } from '@/types/pipeline'
 
 const props = defineProps<{
@@ -10,14 +10,16 @@ const props = defineProps<{
   activeBoardId?: string
 }>()
 
+const emit = defineEmits<{
+  create: []
+}>()
+
 const query = ref('')
 const attentionOnly = ref(false)
 const searchInput = ref<HTMLInputElement | null>(null)
 
 const attentionCount = computed(
-  () =>
-    props.groups.flatMap((group) => group.boards).filter((board) => countOverTarget(board) > 0)
-      .length,
+  () => props.groups.flatMap((group) => group.boards).filter((board) => isOverdue(board)).length,
 )
 
 const filteredGroups = computed(() => {
@@ -28,8 +30,8 @@ const filteredGroups = computed(() => {
       department: group.department,
       boards: group.boards.filter((board) => {
         const matchesQuery =
-          !term || `${board.title} ${board.department}`.toLowerCase().includes(term)
-        const matchesFilter = !attentionOnly.value || countOverTarget(board) > 0
+          !term || `${board.name} ${board.department}`.toLowerCase().includes(term)
+        const matchesFilter = !attentionOnly.value || isOverdue(board)
         return matchesQuery && matchesFilter
       }),
     }))
@@ -39,6 +41,8 @@ const filteredGroups = computed(() => {
 const visibleCount = computed(() =>
   filteredGroups.value.reduce((total, group) => total + group.boards.length, 0),
 )
+
+const hasBoards = computed(() => props.groups.some((group) => group.boards.length > 0))
 
 function activeCount(board: Board): number {
   return activeCandidates(board).length
@@ -100,7 +104,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
           :aria-pressed="attentionOnly"
           @click="attentionOnly = true"
         >
-          Needs attention {{ attentionCount }}
+          Past deadline {{ attentionCount }}
         </button>
       </div>
     </div>
@@ -110,7 +114,15 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
       {{ visibleCount }} {{ visibleCount === 1 ? 'role' : 'roles' }} shown.
     </p>
 
-    <div v-if="!filteredGroups.length" class="board-empty">
+    <div v-if="!hasBoards" class="board-empty">
+      <h2>No boards yet.</h2>
+      <p>Create your first role board to start tracking applicants.</p>
+      <v-btn color="primary" variant="flat" prepend-icon="mdi-plus" @click="emit('create')">
+        Create board
+      </v-btn>
+    </div>
+
+    <div v-else-if="!filteredGroups.length" class="board-empty">
       <h2>No roles match.</h2>
       <p>Try a different search, or show every role.</p>
       <v-btn color="primary" variant="flat" @click="resetFilters">Show all roles</v-btn>
@@ -133,12 +145,13 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown))
           >
             <div class="board-card__head">
               <div>
-                <h3>{{ board.title }}</h3>
-                <p>{{ board.openPositions }} open &middot; {{ activeCount(board) }} active</p>
+                <h3>{{ board.name }}</h3>
+                <p>
+                  {{ board.openPositions }} open &middot; {{ activeCount(board) }} active &middot;
+                  due {{ formatDeadline(board.deadline) }}
+                </p>
               </div>
-              <span v-if="countOverTarget(board)" class="board-card__late">
-                {{ countOverTarget(board) }} over target
-              </span>
+              <span v-if="isOverdue(board)" class="board-card__late">Past deadline</span>
             </div>
             <PipelineBar :steps="board.steps" :counts="pipelineCounts(board)" />
           </RouterLink>

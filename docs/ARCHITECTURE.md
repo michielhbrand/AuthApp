@@ -2,16 +2,16 @@
 
 ## Overview
 
-TeamBuilder is a static Vue 3 single-page application. All authentication is performed
-directly against Supabase Auth from the browser using the publishable key. There is no custom
-backend, no server-side session, and no database access yet. Administrators provision users
-in Supabase and can invite them by email; invited users choose their own password.
+TeamBuilder is a static Vue 3 single-page application. Authentication and data access are
+performed directly against Supabase from the browser using the publishable key. There is no
+custom backend and no server-side session. Administrators provision users in Supabase and can
+invite them by email; invited users choose their own password.
 
 The protected hiring portal is a board-based workspace. A board represents one open role,
-boards are grouped by department, and each board has its own ordered steps and candidates.
-All board, step, and candidate data is deterministic dummy data in `src/data/boards.ts` and
-lives only in Pinia memory for the current browser session. Pipeline actions mutate that
-in-memory store and reset on reload. Supabase is not used for board data.
+boards are grouped by department, and each board has its own ordered columns and applicants.
+Boards, columns, and applicants are stored in Supabase Postgres and loaded through Pinia.
+Every signed-in user shares the same workspace; Row Level Security allows the `authenticated`
+role only.
 
 ```text
 Browser
@@ -20,9 +20,7 @@ Browser
   v
 Supabase Auth  <---- session JWT issued to the browser
   |
-  |  (future) Row Level Security for tables
-  v
-Postgres
+  +--> PostgREST / Postgres (RLS: authenticated only)  <---- boards, columns, applicants
 
 Build time:
 GitHub Actions secrets -> Vite env -> bundled publishable key + URL -> GitHub Pages
@@ -109,22 +107,47 @@ without them. It also rejects a `sb_secret_` key defensively.
 
 ## Board data
 
-`src/stores/boards.ts` is the single source of truth for the hiring portal:
+The schema lives in `supabase/migrations/20261106000000_create_hiring_tables.sql`:
 
-- `boards` — the current in-memory board list, initialized from `createBoards()`.
-- derived `groups`, `orderedBoards`, `summaries`, `totals`, and `needsAttention`.
-- `boardById`, `summaryById`, `candidateById`.
-- `updateCandidateField` and `toggleFavorite` for the editable applicant profile.
+- `public.boards` — unique name, department, open positions, deadline, timestamps.
+- `public.board_columns` — board, unique name per board, ordered `position`.
+- `public.applicants` — board, assigned column, contact details, current role, free-text
+  career and work experience, favourite flag, status, `applied_at`, and `step_entered_at`.
+  Email and phone are unique per board.
+
+The composite applicant foreign key `(board_id, column_id)` guarantees that an applicant is
+assigned to a column on the same board. A trigger keeps `updated_at` current. SQL functions
+`create_board`, `add_board_column`, `reorder_board_columns`, and `delete_board_column` make
+multi-row changes atomic.
+`delete_board_column` moves the column's applicants to the first column, and the first column
+cannot be deleted. Deleting a board cascades to its columns and applicants; deleting an
+applicant is permanent.
+
+RLS is enabled on all three tables. Table privileges are explicitly granted to
+`authenticated` and revoked from `anon`; RLS policies then grant `select`, `insert`,
+`update`, and `delete` to `authenticated`. RLS alone is not sufficient because PostgREST
+also requires the underlying table grants. RPC execution is revoked from `public` and `anon`
+and granted to `authenticated`.
+
+`src/lib/boards-api.ts` owns Supabase queries, row/domain mapping, and error-throwing
+boundaries. `src/stores/boards.ts` is the single source of truth for the hiring portal:
+
+- `boards`, `loading`, `initialized`, and `error`.
+- derived `groups`, `orderedBoards`, `summaries`, `totals`, and `needsAttention` (boards past
+  their deadline).
+- `initialize`, `createBoard`, `updateBoard`, `deleteBoard`, `addColumn`, `renameColumn`,
+  `reorderColumns`, `deleteColumn`.
+- `createApplicant`, `deleteApplicant`, `updateCandidateField`, and `toggleFavorite`.
 - `advanceCandidate`, `moveCandidate`, `hireCandidate`, `rejectCandidate`,
-  `reopenCandidate`, and `reset`.
+  `reopenCandidate`, `flushCandidate`, and `reset`.
 
-`src/data/boards.ts` generates deterministic dummy data with a seeded random generator. One
-board represents one hiring role. Candidates include seeded contact details, a current role,
-a favourite flag, and education / work-experience notes. `src/types/pipeline.ts` defines the
-domain types, and `src/lib/pipeline.ts` contains pure helpers for step lookup, over-target
-checks, next-step navigation, department grouping, and summaries. Components read from the
-store and call its actions; they do not mutate board data directly. The store is
-intentionally not persisted and not connected to Supabase.
+The router guard awaits `boards.initialize()` before entering a protected route. Text-field
+edits update Pinia immediately and are debounced before the applicant row is written;
+`flushCandidate` writes any pending edit when the drawer closes. Drag-and-drop moves, status
+changes, deletes, and creations call the API directly. `src/types/pipeline.ts` defines the
+domain types, and `src/lib/pipeline.ts` contains pure helpers for column lookup, deadlines,
+elapsed days, next-step navigation, department grouping, and summaries. Components read from
+the store and call its actions; they do not call Supabase directly.
 
 ## Routing and GitHub Pages
 
@@ -208,13 +231,13 @@ can be newer than the latest release.
 
 ## Extension guidance
 
-- To make board data persistent, add tables and migrations for boards, steps, candidates,
-  and status history, enable RLS, write `anon`/`authenticated` policies, and replace the
-  seeded data source in `src/stores/boards.ts` with Supabase queries. Keep the pure helpers
-  in `src/lib/pipeline.ts` and keep the secret key server-side.
-- If a database table is added, create a migration in `supabase/migrations`, enable RLS, and
-  add policies for the `anon` and `authenticated`. Keep the secret key server-side; this static
-  app must never use it.
+- To change the board schema, add a migration in `supabase/migrations`, update
+  `src/lib/boards-api.ts` mapping, and update both the domain types and the store. Enable RLS
+  and add policies for the intended roles; keep the secret key server-side.
+- Keep the pure helpers in `src/lib/pipeline.ts` free of Supabase calls so pipeline behavior
+  stays unit-testable.
+- Keep the first board column as the fallback bucket. If column reordering is added, update
+  the atomic delete function and the `position` ordering together.
 - Password recovery links already use the same `/set-password` flow. If magic links are
   added, extend the Supabase redirect allow-list for both local and Pages origins and add
   the corresponding routes.

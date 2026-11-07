@@ -8,6 +8,8 @@ import type {
 } from '@/types/pipeline'
 import { departments } from '@/types/pipeline'
 
+const DAY_MS = 86_400_000
+
 export function stepById(board: Board, stepId: string): PipelineStep | undefined {
   return board.steps.find((step) => step.id === stepId)
 }
@@ -33,18 +35,43 @@ export function closedCandidates(board: Board, status: 'hired' | 'rejected'): Ca
   return board.candidates.filter((candidate) => candidate.status === status)
 }
 
-export function isOverTarget(board: Board, candidate: Candidate): boolean {
-  const step = stepById(board, candidate.stepId)
+export function daysSince(isoDate: string, now: Date = new Date()): number {
+  const date = new Date(isoDate)
 
-  if (!step || candidate.status !== 'active') {
-    return false
+  if (Number.isNaN(date.getTime())) {
+    return 0
   }
 
-  return candidate.daysInStep > step.targetDays
+  return Math.max(0, Math.floor((now.getTime() - date.getTime()) / DAY_MS))
 }
 
-export function countOverTarget(board: Board): number {
-  return activeCandidates(board).filter((candidate) => isOverTarget(board, candidate)).length
+export function daysInStep(candidate: Candidate, now: Date = new Date()): number {
+  return daysSince(candidate.stepEnteredAt, now)
+}
+
+export function daysSinceApplied(candidate: Candidate, now: Date = new Date()): number {
+  return daysSince(candidate.appliedAt, now)
+}
+
+export function isOverdue(board: Board, now: Date = new Date()): boolean {
+  return board.deadline < now.toISOString().slice(0, 10)
+}
+
+export function formatDeadline(deadline: string): string {
+  const parts = deadline.split('-').map(Number)
+
+  if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) {
+    return deadline
+  }
+
+  const [year, month, day] = parts as [number, number, number]
+
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
 }
 
 export function nextStep(board: Board, candidate: Candidate): PipelineStep | undefined {
@@ -68,7 +95,7 @@ export function summariseBoard(board: Board): BoardSummary {
   return {
     board,
     active: active.length,
-    overTarget: active.filter((candidate) => isOverTarget(board, candidate)).length,
+    overdue: isOverdue(board),
     hired: closedCandidates(board, 'hired').length,
     rejected: closedCandidates(board, 'rejected').length,
     stepCounts: board.steps.map((step) => ({
@@ -91,7 +118,7 @@ export function groupBoards(boards: Board[], order: readonly string[] = departme
   }
 
   for (const list of grouped.values()) {
-    list.sort((a, b) => a.title.localeCompare(b.title))
+    list.sort((a, b) => a.name.localeCompare(b.name))
   }
 
   const known = new Set(order)
@@ -121,12 +148,12 @@ export function summariseBoards(boards: Board[]): PipelineTotals {
       const summary = summariseBoard(board)
       totals.openPositions += board.openPositions
       totals.active += summary.active
-      totals.overTarget += summary.overTarget
+      totals.overdue += summary.overdue ? 1 : 0
       totals.hired += summary.hired
       totals.rejected += summary.rejected
       return totals
     },
-    { openPositions: 0, active: 0, overTarget: 0, hired: 0, rejected: 0 },
+    { openPositions: 0, active: 0, overdue: 0, hired: 0, rejected: 0 },
   )
 }
 

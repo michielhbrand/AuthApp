@@ -15,30 +15,31 @@ export type CandidateStatus = 'active' | 'hired' | 'rejected'
 export interface PipelineStep {
   id: string
   name: string
-  targetDays: number
+  position: number
 }
 
 export interface Candidate {
   id: string
+  boardId: string
   name: string
   email: string
   phone: string
   currentRole: string
   favorite: boolean
-  source: string
   stepId: string
   status: CandidateStatus
-  daysInStep: number
-  daysSinceApplied: number
+  appliedAt: string
+  stepEnteredAt: string
   education: string
   experience: string
 }
 
 export interface Board {
   id: string
-  title: string
+  name: string
   department: Department
   openPositions: number
+  deadline: string
   steps: PipelineStep[]
   candidates: Candidate[]
 }
@@ -51,7 +52,7 @@ export interface StepCount {
 export interface BoardSummary {
   board: Board
   active: number
-  overTarget: number
+  overdue: boolean
   hired: number
   rejected: number
   stepCounts: StepCount[]
@@ -66,7 +67,24 @@ export interface BoardGroup {
 export interface PipelineTotals {
   openPositions: number
   active: number
-  overTarget: number
+  overdue: number
   hired: number
   rejected: number
+}
+
+export interface BoardInput {
+  name: string
+  department: Department
+  openPositions: number
+  deadline: string
+}
+
+export interface ApplicantInput {
+  name: string
+  email: string
+  phone: string
+  currentRole?: string
+  education?: string
+  experience?: string
+  stepId?: string
 }

@@ -4,8 +4,10 @@ import { RouterLink, useRouter } from 'vue-router'
 import BrandMark from '@/components/BrandMark.vue'
 import ThemeToggle from '@/components/ThemeToggle.vue'
 import { useAuthStore } from '@/stores/auth'
+import { useBoardsStore } from '@/stores/boards'
 
 const auth = useAuthStore()
+const boards = useBoardsStore()
 const router = useRouter()
 
 const email = computed(() => auth.user?.email ?? 'Signed in')
@@ -21,6 +23,7 @@ const initials = computed(() => {
 
 async function signOut(): Promise<void> {
   await auth.signOut()
+  boards.reset()
   await router.replace('/')
 }
 </script>

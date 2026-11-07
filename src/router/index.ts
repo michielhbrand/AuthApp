@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useBoardsStore } from '@/stores/boards'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -51,7 +52,7 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
@@ -67,6 +68,10 @@ router.beforeEach((to) => {
 
   if (to.name === 'login' && auth.isAuthenticated) {
     return { name: 'overview' }
+  }
+
+  if (to.meta.requiresAuth && auth.isAuthenticated) {
+    await useBoardsStore().initialize()
   }
 
   return true

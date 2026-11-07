@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { createBoards } from '@/data/boards'
+import * as api from '@/lib/boards-api'
 import {
   flattenBoards,
   groupBoards,
@@ -8,7 +8,15 @@ import {
   summariseBoard,
   summariseBoards,
 } from '@/lib/pipeline'
-import type { Board, BoardSummary, Candidate, CandidateStatus } from '@/types/pipeline'
+import type {
+  ApplicantInput,
+  Board,
+  BoardInput,
+  BoardSummary,
+  Candidate,
+  CandidateStatus,
+  PipelineStep,
+} from '@/types/pipeline'
 
 interface CandidateContext {
   board: Board
@@ -18,8 +26,48 @@ interface CandidateContext {
 export type EditableCandidateField =
   'name' | 'email' | 'phone' | 'currentRole' | 'education' | 'experience'
 
+const SAVE_DELAY_MS = 500
+
+function friendlyDataError(message: string): string {
+  const normalized = message.toLowerCase()
+
+  if (normalized.includes('boards_name_lower_key') || normalized.includes('boards_name_unique')) {
+    return 'A board with that name already exists.'
+  }
+
+  if (normalized.includes('applicants_board_email_lower_key')) {
+    return 'An applicant with that email already exists on this board.'
+  }
+
+  if (normalized.includes('applicants_board_phone_key')) {
+    return 'An applicant with that phone number already exists on this board.'
+  }
+
+  if (normalized.includes('board_columns_board_name_lower_key')) {
+    return 'A column with that name already exists on this board.'
+  }
+
+  if (normalized.includes('first board column')) {
+    return 'The first column cannot be deleted.'
+  }
+
+  return message
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return friendlyDataError(error.message)
+  }
+
+  return 'Could not save changes. Please try again.'
+}
+
 export const useBoardsStore = defineStore('boards', () => {
-  const boards = ref<Board[]>(createBoards())
+  const boards = ref<Board[]>([])
+  const loading = ref(false)
+  const initialized = ref(false)
+  const error = ref<string | null>(null)
+  const saveTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
   const groups = computed(() => groupBoards(boards.value))
   const orderedBoards = computed(() => flattenBoards(groups.value))
@@ -27,8 +75,8 @@ export const useBoardsStore = defineStore('boards', () => {
   const totals = computed(() => summariseBoards(boards.value))
   const needsAttention = computed(() =>
     summaries.value
-      .filter((summary) => summary.overTarget > 0)
-      .sort((a, b) => b.overTarget - a.overTarget),
+      .filter((summary) => summary.overdue)
+      .sort((a, b) => a.board.deadline.localeCompare(b.board.deadline)),
   )
 
   function boardById(id: string): Board | undefined {
@@ -43,26 +91,6 @@ export const useBoardsStore = defineStore('boards', () => {
     return candidateContext(id)?.candidate
   }
 
-  function updateCandidateField(
-    candidateId: string,
-    field: EditableCandidateField,
-    value: string,
-  ): void {
-    const context = candidateContext(candidateId)
-
-    if (context) {
-      context.candidate[field] = value
-    }
-  }
-
-  function toggleFavorite(candidateId: string): void {
-    const context = candidateContext(candidateId)
-
-    if (context) {
-      context.candidate.favorite = !context.candidate.favorite
-    }
-  }
-
   function candidateContext(candidateId: string): CandidateContext | undefined {
     for (const board of boards.value) {
       const candidate = board.candidates.find((item) => item.id === candidateId)
@@ -75,6 +103,246 @@ export const useBoardsStore = defineStore('boards', () => {
     return undefined
   }
 
+  async function initialize(): Promise<void> {
+    if (initialized.value) {
+      return
+    }
+
+    loading.value = true
+    error.value = null
+
+    try {
+      boards.value = await api.fetchBoards()
+      initialized.value = true
+    } catch (caught) {
+      error.value = errorMessage(caught)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function createBoard(input: BoardInput): Promise<Board | undefined> {
+    loading.value = true
+    error.value = null
+
+    try {
+      const board = await api.createBoard(input)
+      boards.value = [...boards.value, board]
+      return board
+    } catch (caught) {
+      error.value = errorMessage(caught)
+      return undefined
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updateBoard(id: string, input: Partial<BoardInput>): Promise<boolean> {
+    error.value = null
+
+    try {
+      await api.updateBoard(id, input)
+      const board = boardById(id)
+
+      if (board) {
+        Object.assign(board, input)
+      }
+
+      return true
+    } catch (caught) {
+      error.value = errorMessage(caught)
+      return false
+    }
+  }
+
+  async function deleteBoard(id: string): Promise<boolean> {
+    error.value = null
+
+    try {
+      await api.deleteBoard(id)
+      boards.value = boards.value.filter((board) => board.id !== id)
+      return true
+    } catch (caught) {
+      error.value = errorMessage(caught)
+      return false
+    }
+  }
+
+  async function addColumn(boardId: string, name: string): Promise<boolean> {
+    error.value = null
+    const board = boardById(boardId)
+
+    if (!board) {
+      return false
+    }
+
+    try {
+      const column = await api.addBoardColumn(boardId, name.trim())
+      const position = board.steps.reduce((max, step) => Math.max(max, step.position), -1) + 1
+      board.steps = [...board.steps, { ...column, position }].sort(
+        (a, b) => a.position - b.position,
+      )
+      return true
+    } catch (caught) {
+      error.value = errorMessage(caught)
+      return false
+    }
+  }
+
+  async function renameColumn(boardId: string, stepId: string, name: string): Promise<boolean> {
+    error.value = null
+    const board = boardById(boardId)
+    const step = board?.steps.find((item) => item.id === stepId)
+
+    if (!board || !step) {
+      return false
+    }
+
+    try {
+      await api.renameBoardColumn(stepId, name.trim())
+      step.name = name.trim()
+      return true
+    } catch (caught) {
+      error.value = errorMessage(caught)
+      return false
+    }
+  }
+
+  async function reorderColumns(boardId: string, stepIds: string[]): Promise<boolean> {
+    error.value = null
+    const board = boardById(boardId)
+    const first = board?.steps[0]
+
+    if (!board || !first || stepIds[0] !== first.id || stepIds.length !== board.steps.length) {
+      error.value = 'The first column must stay first.'
+      return false
+    }
+
+    const byId = new Map(board.steps.map((step) => [step.id, step]))
+    const ordered = stepIds.map((id) => byId.get(id))
+
+    if (ordered.some((step) => !step)) {
+      error.value = 'The column order is no longer valid. Reload the board and try again.'
+      return false
+    }
+
+    try {
+      await api.reorderBoardColumns(boardId, stepIds)
+      const steps = ordered as PipelineStep[]
+      steps.forEach((step, position) => {
+        step.position = position
+      })
+      board.steps = steps
+      return true
+    } catch (caught) {
+      error.value = errorMessage(caught)
+      return false
+    }
+  }
+
+  async function deleteColumn(boardId: string, stepId: string): Promise<boolean> {
+    error.value = null
+    const board = boardById(boardId)
+    const step = board?.steps.find((item) => item.id === stepId)
+    const first = board?.steps[0]
+
+    if (!board || !step || !first || first.id === stepId) {
+      error.value = 'The first column cannot be deleted.'
+      return false
+    }
+
+    try {
+      await api.deleteBoardColumn(stepId)
+      const now = new Date().toISOString()
+      board.candidates.forEach((candidate) => {
+        if (candidate.stepId === stepId) {
+          candidate.stepId = first.id
+          candidate.stepEnteredAt = now
+        }
+      })
+      board.steps = board.steps.filter((item) => item.id !== stepId)
+      return true
+    } catch (caught) {
+      error.value = errorMessage(caught)
+      return false
+    }
+  }
+
+  async function createApplicant(boardId: string, input: ApplicantInput): Promise<boolean> {
+    error.value = null
+    const board = boardById(boardId)
+    const defaultStep = board?.steps[0]
+
+    if (!board || !defaultStep) {
+      error.value = 'Add a column to this board before creating an applicant.'
+      return false
+    }
+
+    const stepId =
+      input.stepId && board.steps.some((step) => step.id === input.stepId)
+        ? input.stepId
+        : defaultStep.id
+
+    try {
+      const candidate = await api.createApplicant(boardId, stepId, {
+        name: input.name.trim(),
+        email: input.email.trim(),
+        phone: input.phone.trim(),
+        currentRole: input.currentRole?.trim() ?? '',
+        education: input.education ?? '',
+        experience: input.experience ?? '',
+      })
+      board.candidates = [...board.candidates, candidate]
+      return true
+    } catch (caught) {
+      error.value = errorMessage(caught)
+      return false
+    }
+  }
+
+  async function deleteApplicant(candidateId: string): Promise<boolean> {
+    error.value = null
+    const context = candidateContext(candidateId)
+
+    if (!context) {
+      return false
+    }
+
+    try {
+      clearSaveTimer(candidateId)
+      await api.deleteApplicant(candidateId)
+      context.board.candidates = context.board.candidates.filter(
+        (candidate) => candidate.id !== candidateId,
+      )
+      return true
+    } catch (caught) {
+      error.value = errorMessage(caught)
+      return false
+    }
+  }
+
+  function updateCandidateField(
+    candidateId: string,
+    field: EditableCandidateField,
+    value: string,
+  ): void {
+    const context = candidateContext(candidateId)
+
+    if (context) {
+      context.candidate[field] = value
+      scheduleSave(candidateId)
+    }
+  }
+
+  function toggleFavorite(candidateId: string): void {
+    const context = candidateContext(candidateId)
+
+    if (context) {
+      context.candidate.favorite = !context.candidate.favorite
+      scheduleSave(candidateId)
+    }
+  }
+
   function moveCandidate(candidateId: string, stepId: string): void {
     const context = candidateContext(candidateId)
 
@@ -82,9 +350,20 @@ export const useBoardsStore = defineStore('boards', () => {
       return
     }
 
+    const now = new Date().toISOString()
     context.candidate.stepId = stepId
     context.candidate.status = 'active'
-    context.candidate.daysInStep = 0
+    context.candidate.stepEnteredAt = now
+
+    void api
+      .updateApplicant(candidateId, {
+        columnId: stepId,
+        status: 'active',
+        stepEnteredAt: now,
+      })
+      .catch((caught) => {
+        error.value = errorMessage(caught)
+      })
   }
 
   function advanceCandidate(candidateId: string): void {
@@ -101,40 +380,98 @@ export const useBoardsStore = defineStore('boards', () => {
     }
   }
 
-  function hireCandidate(candidateId: string): void {
-    const context = candidateContext(candidateId)
-
-    if (context) {
-      context.candidate.status = 'hired'
-    }
-  }
-
-  function rejectCandidate(candidateId: string): void {
-    const context = candidateContext(candidateId)
-
-    if (context) {
-      context.candidate.status = 'rejected'
-    }
-  }
-
   function setCandidateStatus(candidateId: string, status: CandidateStatus): void {
     const context = candidateContext(candidateId)
 
-    if (context) {
-      context.candidate.status = status
+    if (!context) {
+      return
     }
+
+    context.candidate.status = status
+
+    void api.updateApplicant(candidateId, { status }).catch((caught) => {
+      error.value = errorMessage(caught)
+    })
+  }
+
+  function hireCandidate(candidateId: string): void {
+    setCandidateStatus(candidateId, 'hired')
+  }
+
+  function rejectCandidate(candidateId: string): void {
+    setCandidateStatus(candidateId, 'rejected')
   }
 
   function reopenCandidate(candidateId: string): void {
     setCandidateStatus(candidateId, 'active')
   }
 
+  function clearSaveTimer(candidateId: string): void {
+    const timer = saveTimers.get(candidateId)
+
+    if (timer) {
+      clearTimeout(timer)
+      saveTimers.delete(candidateId)
+    }
+  }
+
+  function scheduleSave(candidateId: string): void {
+    clearSaveTimer(candidateId)
+    saveTimers.set(
+      candidateId,
+      setTimeout(() => {
+        saveTimers.delete(candidateId)
+        void persistCandidate(candidateId)
+      }, SAVE_DELAY_MS),
+    )
+  }
+
+  async function persistCandidate(candidateId: string): Promise<void> {
+    const candidate = candidateById(candidateId)
+
+    if (!candidate) {
+      return
+    }
+
+    try {
+      await api.updateApplicant(candidateId, {
+        name: candidate.name,
+        email: candidate.email,
+        phone: candidate.phone,
+        currentRole: candidate.currentRole,
+        education: candidate.education,
+        experience: candidate.experience,
+        favorite: candidate.favorite,
+        status: candidate.status,
+        columnId: candidate.stepId,
+      })
+    } catch (caught) {
+      error.value = errorMessage(caught)
+    }
+  }
+
+  async function flushCandidate(candidateId: string): Promise<void> {
+    clearSaveTimer(candidateId)
+    await persistCandidate(candidateId)
+  }
+
   function reset(): void {
-    boards.value = createBoards()
+    for (const timer of saveTimers.values()) {
+      clearTimeout(timer)
+    }
+
+    saveTimers.clear()
+    boards.value = []
+    initialized.value = false
+    loading.value = false
+    error.value = null
   }
 
   return {
     boards,
+    loading,
+    initialized,
+    error,
     groups,
     orderedBoards,
     summaries,
@@ -143,6 +480,16 @@ export const useBoardsStore = defineStore('boards', () => {
     boardById,
     summaryById,
     candidateById,
+    initialize,
+    createBoard,
+    updateBoard,
+    deleteBoard,
+    addColumn,
+    renameColumn,
+    reorderColumns,
+    deleteColumn,
+    createApplicant,
+    deleteApplicant,
     updateCandidateField,
     toggleFavorite,
     advanceCandidate,
@@ -150,6 +497,7 @@ export const useBoardsStore = defineStore('boards', () => {
     hireCandidate,
     rejectCandidate,
     reopenCandidate,
+    flushCandidate,
     reset,
   }
 })

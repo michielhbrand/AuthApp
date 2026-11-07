@@ -2,13 +2,18 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ApplicantDrawer from '@/components/ApplicantDrawer.vue'
+import ApplicantFormDialog from '@/components/ApplicantFormDialog.vue'
 import AppShell from '@/components/AppShell.vue'
 import BoardColumn from '@/components/BoardColumn.vue'
+import BoardFormDialog from '@/components/BoardFormDialog.vue'
 import BoardSwitcher from '@/components/BoardSwitcher.vue'
+import ColumnDialog from '@/components/ColumnDialog.vue'
 import {
   candidatesInStep,
   closedCandidates,
+  formatDeadline,
   initials,
+  isOverdue,
   stepById,
   summariseBoard,
 } from '@/lib/pipeline'
@@ -23,6 +28,9 @@ const dragged = ref<{ candidateId: string; stepId: string } | null>(null)
 const settlingCandidateId = ref<string | null>(null)
 const profileCandidateId = ref<string | null>(null)
 const profileOpen = ref(false)
+const editOpen = ref(false)
+const columnsOpen = ref(false)
+const applicantOpen = ref(false)
 let settleTimer: ReturnType<typeof setTimeout> | undefined
 
 const boardId = computed(() => String(route.params.boardId ?? ''))
@@ -70,6 +78,10 @@ function goToBoard(id: string | undefined): void {
   }
 
   void router.push({ name: 'board', params: { boardId: id } })
+}
+
+function onBoardDeleted(): void {
+  void router.push({ name: 'boards' })
 }
 
 function openProfile(candidate: Candidate): void {
@@ -158,19 +170,39 @@ onBeforeUnmount(() => {
       <header class="page-heading board-heading">
         <div>
           <p class="eyebrow">{{ board.department }}</p>
-          <h1 class="page-title board-title">{{ board.title }}</h1>
+          <h1 class="page-title board-title">{{ board.name }}</h1>
           <p class="lede">
             {{ board.openPositions }}
             {{ board.openPositions === 1 ? 'open position' : 'open positions' }}.
             {{ summary?.active ?? 0 }} active
-            {{ summary?.active === 1 ? 'candidate' : 'candidates' }}.
-            <template v-if="summary?.overTarget"> {{ summary.overTarget }} over target. </template>
-            <template v-else>Nobody over target.</template>
+            {{ summary?.active === 1 ? 'candidate' : 'candidates' }}. Deadline
+            {{ formatDeadline(board.deadline) }}.
+            <template v-if="isOverdue(board)"> Past deadline. </template>
           </p>
         </div>
 
         <div class="board-controls">
           <BoardSwitcher ref="switcher" :groups="store.groups" :active-board-id="board.id" />
+
+          <div class="board-nav">
+            <v-btn variant="outlined" prepend-icon="mdi-pencil-outline" @click="editOpen = true">
+              Edit
+            </v-btn>
+            <v-btn
+              variant="outlined"
+              prepend-icon="mdi-view-column-outline"
+              @click="columnsOpen = true"
+            >
+              Columns
+            </v-btn>
+            <v-btn
+              color="primary"
+              prepend-icon="mdi-account-plus-outline"
+              @click="applicantOpen = true"
+            >
+              Add applicant
+            </v-btn>
+          </div>
 
           <nav class="board-nav" aria-label="Move between boards">
             <v-btn
@@ -193,6 +225,10 @@ onBeforeUnmount(() => {
           </nav>
         </div>
       </header>
+
+      <v-alert v-if="store.error" class="orbital-alert mb-6" type="error" density="compact">
+        {{ store.error }}
+      </v-alert>
 
       <div class="board-columns-wrap">
         <div class="board-columns" :style="{ '--columns': board.steps.length }">
@@ -261,6 +297,9 @@ onBeforeUnmount(() => {
       </details>
     </div>
 
+    <BoardFormDialog v-model="editOpen" :board="board" @deleted="onBoardDeleted" />
+    <ColumnDialog v-model="columnsOpen" :board="board" />
+    <ApplicantFormDialog v-model="applicantOpen" :board="board" />
     <ApplicantDrawer v-model="profileOpen" :candidate-id="profileCandidateId" />
   </AppShell>
 </template>

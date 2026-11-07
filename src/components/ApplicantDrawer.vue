@@ -37,6 +37,20 @@ function updateField(field: EditableCandidateField, value: unknown): void {
   }
 }
 
+async function removeApplicant(): Promise<void> {
+  const current = candidate.value
+
+  if (!current || !window.confirm(`Delete ${current.name}? This cannot be undone.`)) {
+    return
+  }
+
+  const deleted = await store.deleteApplicant(current.id)
+
+  if (deleted) {
+    open.value = false
+  }
+}
+
 function setPageScrollLocked(locked: boolean): void {
   const root = document.documentElement
   const body = document.body
@@ -57,7 +71,16 @@ function setPageScrollLocked(locked: boolean): void {
   }
 }
 
-watch(() => props.modelValue, setPageScrollLocked)
+watch(
+  () => props.modelValue,
+  (value) => {
+    setPageScrollLocked(value)
+
+    if (!value && props.candidateId) {
+      void store.flushCandidate(props.candidateId)
+    }
+  },
+)
 
 onBeforeUnmount(() => setPageScrollLocked(false))
 </script>
@@ -81,7 +104,7 @@ onBeforeUnmount(() => setPageScrollLocked(false))
           <div class="applicant-drawer__identity">
             <p class="eyebrow">Applicant profile</p>
             <h2>{{ candidate.name }}</h2>
-            <p class="mono-label">{{ candidate.source }}</p>
+            <p class="mono-label">{{ candidate.currentRole || candidate.email }}</p>
           </div>
 
           <div class="applicant-drawer__actions">
@@ -103,6 +126,10 @@ onBeforeUnmount(() => setPageScrollLocked(false))
         </header>
 
         <div class="applicant-drawer__body">
+          <v-alert v-if="store.error" class="orbital-alert" type="error" density="compact">
+            {{ store.error }}
+          </v-alert>
+
           <section class="applicant-section">
             <p class="eyebrow">Basic information</p>
 
@@ -151,9 +178,16 @@ onBeforeUnmount(() => setPageScrollLocked(false))
             />
           </section>
 
-          <p class="applicant-drawer__note">
-            Changes are saved to this browser session and reset when the workspace reloads.
-          </p>
+          <p class="applicant-drawer__note">Changes save automatically to the shared workspace.</p>
+
+          <v-btn
+            variant="text"
+            color="error"
+            prepend-icon="mdi-delete-outline"
+            @click="removeApplicant"
+          >
+            Delete applicant
+          </v-btn>
         </div>
       </div>
     </v-navigation-drawer>

@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import AppShell from '@/components/AppShell.vue'
-import { departmentTotals } from '@/lib/pipeline'
+import { departmentTotals, formatDeadline } from '@/lib/pipeline'
 import { useBoardsStore } from '@/stores/boards'
 
 const store = useBoardsStore()
@@ -17,6 +17,10 @@ const departmentRows = computed(() =>
 
 <template>
   <AppShell>
+    <v-alert v-if="store.error" class="orbital-alert mb-6" type="error" density="compact">
+      {{ store.error }}
+    </v-alert>
+
     <div class="page-heading">
       <div>
         <p class="eyebrow">Hiring workspace</p>
@@ -43,9 +47,9 @@ const departmentRows = computed(() =>
         <span class="stat-meta">In an open pipeline</span>
       </article>
       <article class="stat-card">
-        <span class="mono-label">Over target</span>
-        <strong class="stat-value">{{ store.totals.overTarget }}</strong>
-        <span class="stat-meta">Past their step target</span>
+        <span class="mono-label">Past deadline</span>
+        <strong class="stat-value">{{ store.totals.overdue }}</strong>
+        <span class="stat-meta">Role boards past their deadline</span>
       </article>
       <article class="stat-card">
         <span class="mono-label">Hired</span>
@@ -59,14 +63,14 @@ const departmentRows = computed(() =>
         <div class="data-panel-head">
           <div>
             <p class="mono-label">Attention</p>
-            <h2 id="attention-title" class="panel-title mt-1">Roles over target</h2>
+            <h2 id="attention-title" class="panel-title mt-1">Roles past deadline</h2>
           </div>
           <span class="status-badge">{{ store.needsAttention.length }}</span>
         </div>
 
         <div class="data-panel-body">
           <p v-if="!store.needsAttention.length" class="overview-empty">
-            Every active candidate is inside their step target.
+            Every role board is inside its deadline.
           </p>
 
           <RouterLink
@@ -76,12 +80,12 @@ const departmentRows = computed(() =>
             :to="{ name: 'board', params: { boardId: summary.board.id } }"
           >
             <div>
-              <p class="attention-title">{{ summary.board.title }}</p>
+              <p class="attention-title">{{ summary.board.name }}</p>
               <p class="attention-meta">
                 {{ summary.board.department }} &middot; {{ summary.active }} active
               </p>
             </div>
-            <span class="attention-count">{{ summary.overTarget }} over target</span>
+            <span class="attention-count">Due {{ formatDeadline(summary.board.deadline) }}</span>
             <v-icon icon="mdi-chevron-right" size="20" />
           </RouterLink>
         </div>
@@ -104,8 +108,8 @@ const departmentRows = computed(() =>
             </div>
             <div class="department-numbers">
               <span>{{ group.totals.active }} active</span>
-              <span v-if="group.totals.overTarget" class="over">
-                {{ group.totals.overTarget }} over
+              <span v-if="group.totals.overdue" class="over">
+                {{ group.totals.overdue }} past due
               </span>
             </div>
           </div>

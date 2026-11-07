@@ -2,8 +2,9 @@
 import { computed } from 'vue'
 import { useBoardsStore } from '@/stores/boards'
 import {
+  daysInStep as getDaysInStep,
+  daysSinceApplied as getDaysSinceApplied,
   initials as getInitials,
-  isOverTarget,
   nextStep,
   previousStep,
   stepById,
@@ -26,7 +27,6 @@ const emit = defineEmits<{
 const store = useBoardsStore()
 
 const step = computed(() => stepById(props.board, props.candidate.stepId))
-const overTarget = computed(() => isOverTarget(props.board, props.candidate))
 const next = computed(() => nextStep(props.board, props.candidate))
 const previous = computed(() => previousStep(props.board, props.candidate))
 const canDrag = computed(() => Boolean(next.value || previous.value))
@@ -38,13 +38,23 @@ const moveTargets = computed(() =>
 )
 
 const daysLabel = computed(() => {
-  const days = props.candidate.daysInStep
+  const days = getDaysInStep(props.candidate)
 
   if (days === 0) {
     return 'Entered this step today'
   }
 
   return `${days} ${days === 1 ? 'day' : 'days'} in step`
+})
+
+const appliedLabel = computed(() => {
+  const days = getDaysSinceApplied(props.candidate)
+
+  if (days === 0) {
+    return 'applied today'
+  }
+
+  return `applied ${days} ${days === 1 ? 'day' : 'days'} ago`
 })
 
 function advance(): void {
@@ -82,7 +92,6 @@ function onDragEnd(): void {
   <article
     class="candidate-card candidate-card--clickable"
     :class="{
-      'candidate-card--flagged': overTarget,
       'candidate-card--draggable': canDrag,
       'candidate-card--dragging': dragging,
       'candidate-card--settling': settling,
@@ -101,14 +110,11 @@ function onDragEnd(): void {
       <span class="candidate-avatar" aria-hidden="true">{{ initials }}</span>
       <div class="candidate-card__identity">
         <p class="candidate-name">{{ candidate.name }}</p>
-        <p class="candidate-source">{{ candidate.source }}</p>
+        <p class="candidate-source">{{ candidate.currentRole || candidate.email }}</p>
       </div>
     </div>
 
-    <p class="candidate-days" :class="{ 'candidate-days--over': overTarget }">
-      {{ daysLabel }}<template v-if="overTarget">, over target</template>. Applied
-      {{ candidate.daysSinceApplied }} {{ candidate.daysSinceApplied === 1 ? 'day' : 'days' }} ago.
-    </p>
+    <p class="candidate-days">{{ daysLabel }}. {{ appliedLabel }}.</p>
 
     <div class="candidate-actions" @click.stop>
       <v-btn

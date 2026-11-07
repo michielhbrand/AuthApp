@@ -1,54 +1,108 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import type { Board, Candidate } from '@/types/pipeline'
+
+const mocks = vi.hoisted(() => ({
+  fetchBoards: vi.fn<() => Promise<unknown>>(),
+  createBoard: vi.fn<(...args: unknown[]) => unknown>(),
+  updateBoard: vi.fn<(...args: unknown[]) => unknown>(),
+  deleteBoard: vi.fn<(...args: unknown[]) => unknown>(),
+  addBoardColumn: vi.fn<(...args: unknown[]) => unknown>(),
+  renameBoardColumn: vi.fn<(...args: unknown[]) => unknown>(),
+  deleteBoardColumn: vi.fn<(...args: unknown[]) => unknown>(),
+  reorderBoardColumns: vi.fn<(...args: unknown[]) => unknown>(),
+  createApplicant: vi.fn<(...args: unknown[]) => unknown>(),
+  updateApplicant: vi.fn<(...args: unknown[]) => unknown>(),
+  deleteApplicant: vi.fn<(...args: unknown[]) => unknown>(),
+}))
+
+vi.mock('@/lib/boards-api', () => mocks)
+
 import { useBoardsStore } from '@/stores/boards'
+
+function makeCandidate(overrides: Partial<Candidate> = {}): Candidate {
+  return {
+    id: 'c1',
+    boardId: 'b1',
+    name: 'Amara Okafor',
+    email: 'amara@example.com',
+    phone: '+1 555 010 2000',
+    currentRole: 'Product Designer',
+    favorite: false,
+    stepId: 's1',
+    status: 'active',
+    appliedAt: '2026-11-01T00:00:00Z',
+    stepEnteredAt: '2026-11-03T00:00:00Z',
+    education: '',
+    experience: '',
+    ...overrides,
+  }
+}
+
+function makeBoard(overrides: Partial<Board> = {}): Board {
+  return {
+    id: 'b1',
+    name: 'Frontend Engineer',
+    department: 'Engineering',
+    openPositions: 1,
+    deadline: '2026-12-31',
+    steps: [
+      { id: 's1', name: 'Applied', position: 0 },
+      { id: 's2', name: 'Interview', position: 1 },
+    ],
+    candidates: [makeCandidate()],
+    ...overrides,
+  }
+}
+
+async function initializedStore() {
+  const store = useBoardsStore()
+  await store.initialize()
+  return store
+}
 
 describe('boards store', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    vi.clearAllMocks()
+    mocks.fetchBoards.mockResolvedValue([makeBoard()])
+    mocks.updateApplicant.mockResolvedValue(undefined)
+    mocks.deleteApplicant.mockResolvedValue(undefined)
+    mocks.deleteBoard.mockResolvedValue(undefined)
+    mocks.deleteBoardColumn.mockResolvedValue(undefined)
+    mocks.reorderBoardColumns.mockResolvedValue(undefined)
+    mocks.renameBoardColumn.mockResolvedValue(undefined)
   })
 
-  it('advances a candidate to the next step and resets their time in step', () => {
+  it('loads boards from the backend once', async () => {
     const store = useBoardsStore()
-    const board = store.boards[0]
 
-    expect(board).toBeDefined()
-    if (!board) return
+    await store.initialize()
+    await store.initialize()
 
-    const candidate = board.candidates.find(
-      (item) =>
-        item.status === 'active' &&
-        board.steps.findIndex((step) => step.id === item.stepId) < board.steps.length - 1,
-    )
+    expect(mocks.fetchBoards).toHaveBeenCalledOnce()
+    expect(store.initialized).toBe(true)
+    expect(store.boards).toHaveLength(1)
+  })
+
+  it('advances a candidate and persists the new column', async () => {
+    const store = await initializedStore()
+    const candidate = store.boards[0]?.candidates[0]
 
     expect(candidate).toBeDefined()
     if (!candidate) return
 
-    const originalStep = candidate.stepId
     store.advanceCandidate(candidate.id)
 
-    expect(candidate.stepId).not.toBe(originalStep)
-    expect(candidate.daysInStep).toBe(0)
+    expect(candidate.stepId).toBe('s2')
+    expect(mocks.updateApplicant).toHaveBeenCalledWith(
+      candidate.id,
+      expect.objectContaining({ columnId: 's2', status: 'active' }),
+    )
   })
 
-  it('moves a candidate to an explicit step', () => {
-    const store = useBoardsStore()
-    const board = store.boards[0]
-    const target = board ? board.steps[board.steps.length - 1] : undefined
-    const candidate = board?.candidates[0]
-
-    expect(target).toBeDefined()
-    expect(candidate).toBeDefined()
-    if (!target || !candidate) return
-
-    store.moveCandidate(candidate.id, target.id)
-
-    expect(candidate.stepId).toBe(target.id)
-    expect(candidate.status).toBe('active')
-    expect(candidate.daysInStep).toBe(0)
-  })
-
-  it('rejects, reopens, and hires candidates', () => {
-    const store = useBoardsStore()
+  it('rejects, reopens, and hires candidates', async () => {
+    const store = await initializedStore()
     const candidate = store.boards[0]?.candidates[0]
 
     expect(candidate).toBeDefined()
@@ -62,10 +116,11 @@ describe('boards store', () => {
 
     store.hireCandidate(candidate.id)
     expect(candidate.status).toBe('hired')
+    expect(mocks.updateApplicant).toHaveBeenCalledTimes(3)
   })
 
-  it('updates applicant profile fields and favourites', () => {
-    const store = useBoardsStore()
+  it('updates profile fields locally and persists them on flush', async () => {
+    const store = await initializedStore()
     const candidate = store.boards[0]?.candidates[0]
 
     expect(candidate).toBeDefined()
@@ -73,52 +128,188 @@ describe('boards store', () => {
 
     store.updateCandidateField(candidate.id, 'email', 'new.address@example.com')
     store.updateCandidateField(candidate.id, 'currentRole', 'Staff Engineer')
+    store.toggleFavorite(candidate.id)
 
     expect(candidate.email).toBe('new.address@example.com')
     expect(candidate.currentRole).toBe('Staff Engineer')
+    expect(candidate.favorite).toBe(true)
 
-    const initialFavorite = candidate.favorite
-    store.toggleFavorite(candidate.id)
-    expect(candidate.favorite).toBe(!initialFavorite)
+    await store.flushCandidate(candidate.id)
 
-    store.toggleFavorite(candidate.id)
-    expect(candidate.favorite).toBe(initialFavorite)
+    expect(mocks.updateApplicant).toHaveBeenCalledExactlyOnceWith(
+      candidate.id,
+      expect.objectContaining({
+        email: 'new.address@example.com',
+        currentRole: 'Staff Engineer',
+        favorite: true,
+      }),
+    )
   })
 
-  it('updates the education and experience notes', () => {
-    const store = useBoardsStore()
+  it('moves applicants to the first column when a later column is deleted', async () => {
+    const store = await initializedStore()
+    const board = store.boards[0]
+
+    expect(board).toBeDefined()
+    if (!board) return
+
+    const first = board.steps[0]
+    const candidate = board.candidates[0]
+
+    expect(first).toBeDefined()
+    expect(candidate).toBeDefined()
+    if (!first || !candidate) return
+
+    candidate.stepId = 's2'
+
+    const deleted = await store.deleteColumn(board.id, 's2')
+
+    expect(deleted).toBe(true)
+    expect(mocks.deleteBoardColumn).toHaveBeenCalledWith('s2')
+    expect(candidate.stepId).toBe(first.id)
+    expect(board.steps.map((step) => step.id)).toEqual(['s1'])
+  })
+
+  it('refuses to delete the first column', async () => {
+    const store = await initializedStore()
+    const board = store.boards[0]
+
+    expect(board).toBeDefined()
+    if (!board) return
+
+    const deleted = await store.deleteColumn(board.id, 's1')
+
+    expect(deleted).toBe(false)
+    expect(mocks.deleteBoardColumn).not.toHaveBeenCalled()
+    expect(store.error).toBe('The first column cannot be deleted.')
+  })
+
+  it('reorders columns while keeping the first column fixed', async () => {
+    mocks.fetchBoards.mockResolvedValue([
+      makeBoard({
+        steps: [
+          { id: 's1', name: 'Applied', position: 0 },
+          { id: 's2', name: 'Interview', position: 1 },
+          { id: 's3', name: 'Offer', position: 2 },
+        ],
+      }),
+    ])
+    const store = await initializedStore()
+    const board = store.boards[0]
+
+    expect(board).toBeDefined()
+    if (!board) return
+
+    const reordered = await store.reorderColumns(board.id, ['s1', 's3', 's2'])
+
+    expect(reordered).toBe(true)
+    expect(mocks.reorderBoardColumns).toHaveBeenCalledExactlyOnceWith(board.id, ['s1', 's3', 's2'])
+    expect(board.steps.map((step) => step.name)).toEqual(['Applied', 'Offer', 'Interview'])
+    expect(board.steps.map((step) => step.position)).toEqual([0, 1, 2])
+
+    const rejected = await store.reorderColumns(board.id, ['s2', 's1', 's3'])
+
+    expect(rejected).toBe(false)
+    expect(mocks.reorderBoardColumns).toHaveBeenCalledOnce()
+    expect(store.error).toBe('The first column must stay first.')
+  })
+
+  it('deletes a board and removes it from state', async () => {
+    const store = await initializedStore()
+    const board = store.boards[0]
+
+    expect(board).toBeDefined()
+    if (!board) return
+
+    const deleted = await store.deleteBoard(board.id)
+
+    expect(deleted).toBe(true)
+    expect(mocks.deleteBoard).toHaveBeenCalledExactlyOnceWith(board.id)
+    expect(store.boards).toEqual([])
+  })
+
+  it('adds a new column at the end of the board', async () => {
+    const store = await initializedStore()
+    const board = store.boards[0]
+
+    expect(board).toBeDefined()
+    if (!board) return
+
+    mocks.addBoardColumn.mockResolvedValue({ id: 's3', name: 'Offer' })
+
+    const added = await store.addColumn(board.id, 'Offer')
+
+    expect(added).toBe(true)
+    expect(mocks.addBoardColumn).toHaveBeenCalledWith(board.id, 'Offer')
+    expect(board.steps[board.steps.length - 1]).toEqual({
+      id: 's3',
+      name: 'Offer',
+      position: 2,
+    })
+  })
+
+  it('creates and deletes applicants through the backend', async () => {
+    const store = await initializedStore()
+    const board = store.boards[0]
+
+    expect(board).toBeDefined()
+    if (!board) return
+
+    const created = makeCandidate({
+      id: 'c2',
+      name: 'Liam Price',
+      email: 'liam@example.com',
+      phone: '+1 555 010 3000',
+    })
+    mocks.createApplicant.mockResolvedValue(created)
+
+    const added = await store.createApplicant(board.id, {
+      name: 'Liam Price',
+      email: 'liam@example.com',
+      phone: '+1 555 010 3000',
+      stepId: 's2',
+    })
+
+    expect(added).toBe(true)
+    expect(mocks.createApplicant).toHaveBeenCalledWith(
+      board.id,
+      's2',
+      expect.objectContaining({ name: 'Liam Price', email: 'liam@example.com' }),
+    )
+    expect(store.candidateById('c2')).toEqual(created)
+
+    const removed = await store.deleteApplicant('c2')
+
+    expect(removed).toBe(true)
+    expect(mocks.deleteApplicant).toHaveBeenCalledWith('c2')
+    expect(store.candidateById('c2')).toBeUndefined()
+  })
+
+  it('derives past-deadline boards and totals', async () => {
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
+    mocks.fetchBoards.mockResolvedValue([
+      makeBoard({ id: 'b1', deadline: yesterday }),
+      makeBoard({ id: 'b2', name: 'Backend Engineer', deadline: '2099-01-01' }),
+    ])
+    const store = await initializedStore()
+
+    expect(store.summaries).toHaveLength(2)
+    expect(store.totals.overdue).toBe(1)
+    expect(store.needsAttention.map((summary) => summary.board.id)).toEqual(['b1'])
+  })
+
+  it('resets loaded data and timers', async () => {
+    const store = await initializedStore()
     const candidate = store.boards[0]?.candidates[0]
 
     expect(candidate).toBeDefined()
     if (!candidate) return
 
-    store.updateCandidateField(candidate.id, 'education', 'BSc Design, 2020 - 2024')
-    store.updateCandidateField(candidate.id, 'experience', 'Designer, Northwind Labs')
-
-    expect(candidate.education).toBe('BSc Design, 2020 - 2024')
-    expect(candidate.experience).toBe('Designer, Northwind Labs')
-  })
-
-  it('derives needs-attention boards and totals', () => {
-    const store = useBoardsStore()
-
-    expect(store.summaries.length).toBe(store.boards.length)
-    expect(store.totals.active).toBeGreaterThan(0)
-    expect(store.needsAttention.every((summary) => summary.overTarget > 0)).toBe(true)
-  })
-
-  it('resets back to the seeded data', () => {
-    const store = useBoardsStore()
-    const initialActive = store.totals.active
-    const candidate = store.boards[0]?.candidates.find((item) => item.status === 'active')
-
-    expect(candidate).toBeDefined()
-    if (!candidate) return
-
-    store.hireCandidate(candidate.id)
-    expect(store.totals.active).toBe(initialActive - 1)
-
+    store.updateCandidateField(candidate.id, 'email', 'changed@example.com')
     store.reset()
-    expect(store.totals.active).toBe(initialActive)
+
+    expect(store.boards).toEqual([])
+    expect(store.initialized).toBe(false)
+    expect(store.error).toBeNull()
   })
 })

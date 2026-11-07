@@ -24,7 +24,9 @@
     "postbuild": "node scripts/postbuild.mjs",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
-    "supabase:status": "supabase status"
+    "supabase:status": "supabase status",
+    "supabase:reset": "supabase db reset",
+    "supabase:push": "supabase db push --remote"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",

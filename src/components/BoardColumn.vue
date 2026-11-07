@@ -55,7 +55,7 @@ function onDrop(event: DragEvent): void {
         <h3>{{ step.name }}</h3>
       </div>
       <p>
-        {{ step.targetDays }}-day target. {{ candidates.length }}
+        {{ candidates.length }}
         {{ candidates.length === 1 ? 'candidate' : 'candidates' }}.
       </p>
     </header>

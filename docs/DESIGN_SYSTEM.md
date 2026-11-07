@@ -181,27 +181,28 @@ Use `AppShell` for `/overview`, `/boards`, `/boards/:boardId`, and `/account`.
 Adapt the structure of `design/hiring-pipeline-step-columns.html` to Orbital. Do not copy
 that prototype's palette, gradients, or Bricolage/Hanken fonts.
 
-- `/boards` uses a search field, All roles / Needs attention filter chips, department
+- `/boards` uses a search field, All roles / Past deadline filter chips, department
   headings, and a responsive grid of board cards. Each card shows the role, open positions,
-  active candidates, over-target count, and a pipeline bar.
+  active candidates, deadline, and a pipeline bar.
 - `/boards/:boardId` gives the step-column pipeline the full content width. A compact
   board-switcher button in the page header opens a searchable, department-grouped menu for
   changing roles, paired with Previous / Next controls. At `1024px` the header stacks and
   the switcher spans the available width.
-- Step columns are a horizontal grid with a numbered step header, target days, candidate
-  count, and candidate cards. Columns use the surface-2 fill and hairline dividers.
-- Candidate cards use a 12 px radius, a token-only initials avatar, source, time in step,
-  and the primary advance/hire action. Move and reject actions sit in a disclosure.
+- Step columns are a horizontal grid with a numbered step header, candidate count, and
+  candidate cards. Columns use the surface-2 fill and hairline dividers. There are no
+  per-step target days.
+- Candidate cards use a 12 px radius, a token-only initials avatar, current role, time in
+  step, and the primary advance/hire action. Move and reject actions sit in a disclosure.
 - Clicking a candidate card opens a right-side applicant drawer at roughly half the viewport
   width. It uses the surface, hairline, and field tokens, with an editable basic-information
-  form, a star favourite toggle, and separate auto-growing textareas for education and work
+  form, a star favourite toggle, and separate auto-growing textareas for career and work
   experience. The drawer becomes full width at `720px`.
 - Candidate cards can be dragged one step left or right. While a card is held, only the
   adjacent columns highlight with the accent token and accept the drop. The dragged card
   fades its content but keeps its outline, and lifts and settles with a short transition.
   Cards in the first and final steps can still move in the available direction.
-- Over-target candidates use the danger token on a left inset border and in the day label.
-  Never rely on the border color alone; the copy says "over target".
+- Boards past their deadline use the danger token on the card label and in overview
+  attention rows. Never rely on color alone; the copy says "Past deadline".
 - The closed-candidates disclosure uses two columns for hired and rejected, with a reopen
   action. It stacks at `720px`.
 - Keyboard support mirrors the concept: `/` focuses board search, and `[` / `]` move to the
@@ -258,17 +259,31 @@ class. Keep the rules attached to the field.
 - Values wrap with `overflow-wrap: anywhere`; IDs and session timestamps use mono at
   `0.78rem`.
 
+### Dialogs
+
+- Board create/edit, column management, and applicant creation use `v-dialog` with
+  `.orbital-dialog`: surface fill, line border, standard radius and shadow.
+- Structure each dialog with `.orbital-dialog__head`, `.orbital-dialog__body`, and
+  `.orbital-dialog__actions`. Headers pair an eyebrow with a panel title and a close button;
+  actions align right with cancel/primary buttons.
+- Use `.orbital-dialog__grid` for two-column field pairs; it collapses to one column at
+  `720px`.
+- Edit-board dialogs place a destructive text button on the left of the actions. Deleting a
+  board requires confirmation because it also deletes its columns and applicants.
+- `ColumnDialog` uses `.column-manage__row` for ordered name fields with move up, move down,
+  save, and delete actions. The first column cannot be moved or deleted.
+
 ### Applicant drawer
 
 - Use `ApplicantDrawer.vue` from `BoardView`; it is a temporary `v-navigation-drawer` on the
   right at `50vw` desktop.
-- The header keeps the initials avatar, applicant name, source metadata, a star favourite
-  button (`mdi-star` / `mdi-star-outline` with `aria-pressed`), and a close button.
-- Editable basic fields use the standard `orbital-field` treatment. Education and work
+- The header keeps the initials avatar, applicant name, current role metadata, a star
+  favourite button (`mdi-star` / `mdi-star-outline` with `aria-pressed`), and a close button.
+- Editable basic fields use the standard `orbital-field` treatment. Career and work
   experience each use one auto-growing `v-textarea` with the same field treatment rather
   than structured timeline items.
-- The drawer is in-memory only, like the rest of the board data. The note at the end of the
-  body tells the user that changes reset on reload.
+- The drawer is backed by Postgres. The note at the end tells the user that changes save
+  automatically, and a destructive text button deletes the applicant after confirmation.
 
 ### Brand, avatar, and status
 

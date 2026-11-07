@@ -10,8 +10,8 @@ TeamBuilder is a Vue 3 + Supabase hiring pipeline workspace. It is hosted on Git
 and exists to demonstrate a login screen, admin invitations that let users choose a
 password, persisted sessions, a protected hiring portal, and sign-out. The portal has an
 overview, role boards grouped by department, a step-column pipeline for each role, and an
-account page. Board data is deterministic in-memory dummy data; Supabase is used only for
-authentication. Keep it focused; do not add unrelated product features.
+account page. Boards, pipeline columns, and applicants are stored in Supabase Postgres and
+loaded through Pinia. Keep it focused; do not add unrelated product features.
 
 ## Commands
 
@@ -27,6 +27,8 @@ npm run typecheck
 npm test
 npm run build
 npm run validate:env
+npm run supabase:reset
+npm run supabase:push
 ```
 
 `npm run build` runs typechecking, the Vite build, and the `postbuild` script. A local
@@ -64,20 +66,24 @@ npm run build
 - `src/stores/auth.ts` — owns session state, initialization, sign-in, password setup, and
   sign-out.
 - `src/types/pipeline.ts` — board, step, candidate, and summary types.
-- `src/data/boards.ts` — deterministic seeded dummy boards; no network or database access.
-- `src/lib/pipeline.ts` — pure pipeline helpers for steps, over-target checks, summaries,
-  and department grouping.
-- `src/stores/boards.ts` — in-memory board state and candidate actions.
+- `src/lib/boards-api.ts` — Supabase reads and writes for boards, columns, and applicants.
+- `src/lib/pipeline.ts` — pure pipeline helpers for steps, deadlines, summaries, and
+  department grouping.
+- `src/stores/boards.ts` — persisted board, column, and applicant state and actions.
+- `supabase/migrations/` — Postgres tables, RLS policies, indexes, and board RPC functions.
 - `src/router/index.ts` — routes and the auth guard.
 - `src/components/AppShell.vue` — top-bar navigation and shared layout for protected pages.
 - `src/components/AuthShell.vue` — shared Orbital layout for login and password setup.
 - `src/components/BrandMark.vue` — the only application brand lockup.
 - `src/components/BoardList.vue` — searchable boards grouped by department.
+- `src/components/BoardFormDialog.vue` — create and edit board fields.
+- `src/components/ColumnDialog.vue` — add, rename, reorder, and delete pipeline columns.
+- `src/components/ApplicantFormDialog.vue` — create an applicant on a board.
 - `src/components/BoardSwitcher.vue` — compact header menu for switching between role boards.
 - `src/components/BoardColumn.vue` — one pipeline step column.
 - `src/components/CandidateCard.vue` — candidate summary and pipeline actions.
 - `src/components/ApplicantDrawer.vue` — right-side editable applicant profile with favourite,
-  education, and work-experience notes.
+  career, and work-experience notes.
 - `src/components/PipelineBar.vue` — per-step candidate progress bar.
 - `src/views/LoginView.vue` — login form and validation.
 - `src/views/SetPasswordView.vue` — invite and password update form.
@@ -105,9 +111,14 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
 - Use Vue single-file components with `<script setup lang="ts">`.
 - Keep auth state in the Pinia store. Components should not call `supabase.auth` directly.
 - Keep board state in `src/stores/boards.ts`. Components read from the store and call its
-  actions instead of mutating dummy data directly.
-- Board data is deliberately in-memory and resets on reload. Do not connect it to Supabase
-  without a migration, RLS policies, and a product decision.
+  actions instead of calling Supabase directly.
+- Keep Supabase queries and row/domain mapping in `src/lib/boards-api.ts`. Board data is
+  persisted in the tables created by `supabase/migrations/`.
+- Every signed-in user shares the same workspace. RLS policies allow the `authenticated`
+  role only; do not grant board access to `anon`.
+- Deleting a board cascades to its columns and applicants. Deleting an applicant is
+  permanent. Deleting a column reassigns its applicants to the first column, which cannot be
+  deleted or moved.
 - Keep the Supabase client singleton in `src/lib/supabase.ts`.
 - Invite and recovery links arrive with a `type` in the URL hash or query. Preserve the
   detection in `src/lib/auth-link.ts`; do not let the login redirect bypass
@@ -150,8 +161,11 @@ See `docs/ARCHITECTURE.md` for the auth lifecycle and deployment pipeline.
   through `/set-password`.
 - Keep the cloud Site URL aligned with the Pages origin so invite links return to the app.
   Local invitations use `supabase/config.toml` and Mailpit at `http://localhost:54324`.
-- There are no database tables. If you add one, add a migration under `supabase/migrations`,
-  enable Row Level Security, and write policies for the `anon` and `authenticated` roles.
+- Board data uses `public.boards`, `public.board_columns`, and `public.applicants`. If you
+  add a table, add a migration under `supabase/migrations`, enable Row Level Security, write
+  policies for the intended roles, explicitly grant table privileges to `authenticated`, and
+  revoke them from `anon`. RLS does not replace table grants. Do not expose board data to
+  `anon`.
 - Use the publishable key for client access. Never introduce a service-role client into the
   browser bundle.
 - Keep `supabase/config.toml` redirect URLs aligned with local and Pages origins.

@@ -207,7 +207,7 @@ Dates use ISO 8601. Status values are proposed, accepted, superseded, or depreca
 ## ADR-016: Board-based hiring portal with deterministic in-memory data
 
 - **Date:** 2026-11-05
-- **Status:** Accepted
+- **Status:** Superseded by ADR-019
 - **Context:** The protected area should demonstrate a realistic hiring pipeline without
   introducing database schema, RLS policies, or a data-loading phase. The design reference in
   `design/hiring-pipeline-step-columns.html` models roles, ordered steps, candidates, target
@@ -256,3 +256,24 @@ Dates use ISO 8601. Status values are proposed, accepted, superseded, or depreca
   the recipient must press one extra button. The cloud and local invite templates must be
   updated separately from the code. Expired or already-used token hashes still show the
   friendly invalid-link message.
+
+## ADR-019: Persist hiring data in Supabase Postgres
+
+- **Date:** 2026-11-06
+- **Status:** Accepted
+- **Context:** The hiring portal originally used deterministic in-memory dummy data, so all
+  edits reset on reload. The product now needs persistent boards, ordered pipeline columns,
+  and applicants while keeping the static GitHub Pages deployment and browser-only Supabase
+  client.
+- **Decision:** Add `boards`, `board_columns`, and `applicants` tables in
+  `supabase/migrations/`, with RLS limited to `authenticated`. Store free-text career and
+  work-experience notes as Postgres `text` so indentation, bullets, and newlines are
+  preserved. Use a composite `(board_id, column_id)` foreign key to keep applicants on their
+  board's columns, and atomic SQL functions for board creation, column reordering, and column
+  deletion. Access
+  data through `src/lib/boards-api.ts` and keep Pinia as the UI source of truth.
+- **Consequences:** Every signed-in user shares one workspace. Applicant email and phone are
+  unique per board; board names and column names are case-insensitively unique within their
+  scope. Deleting an applicant is permanent, deleting a column moves its applicants to the
+  first column, and the first column cannot be deleted. Local and cloud projects must apply
+  the migration before the portal can load data. The dummy data source is removed.

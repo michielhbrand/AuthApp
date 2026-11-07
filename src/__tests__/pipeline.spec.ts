@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { createBoards } from '@/data/boards'
 import {
-  countOverTarget,
+  daysInStep,
+  daysSince,
+  daysSinceApplied,
   groupBoards,
-  isOverTarget,
+  isOverdue,
   nextStep,
   previousStep,
   summariseBoard,
@@ -14,16 +15,16 @@ import type { Board, Candidate } from '@/types/pipeline'
 function candidate(overrides: Partial<Candidate> = {}): Candidate {
   return {
     id: 'c1',
+    boardId: 'b1',
     name: 'Amara Okafor',
     email: 'amara.okafor@example.com',
     phone: '+1 555 010 2000',
     currentRole: 'Product Designer',
     favorite: false,
-    source: 'Referral',
     stepId: 's1',
     status: 'active',
-    daysInStep: 2,
-    daysSinceApplied: 6,
+    appliedAt: '2026-11-01T00:00:00Z',
+    stepEnteredAt: '2026-11-03T00:00:00Z',
     education: '',
     experience: '',
     ...overrides,
@@ -32,13 +33,14 @@ function candidate(overrides: Partial<Candidate> = {}): Candidate {
 
 function board(overrides: Partial<Board> = {}): Board {
   return {
-    id: 'frontend-engineer',
-    title: 'Frontend Engineer',
+    id: 'b1',
+    name: 'Frontend Engineer',
     department: 'Engineering',
     openPositions: 1,
+    deadline: '2026-11-30',
     steps: [
-      { id: 's1', name: 'Applied', targetDays: 2 },
-      { id: 's2', name: 'Interview', targetDays: 5 },
+      { id: 's1', name: 'Applied', position: 0 },
+      { id: 's2', name: 'Interview', position: 1 },
     ],
     candidates: [candidate()],
     ...overrides,
@@ -46,29 +48,34 @@ function board(overrides: Partial<Board> = {}): Board {
 }
 
 describe('pipeline helpers', () => {
-  it('creates deterministic dummy boards across departments', () => {
-    const first = createBoards()
-    const second = createBoards()
+  it('calculates days since an ISO timestamp', () => {
+    const now = new Date('2026-11-07T12:00:00Z')
 
-    expect(first.length).toBeGreaterThan(10)
-    expect(first[0]?.title).toBe(second[0]?.title)
-    expect(first[0]?.candidates[0]?.name).toBe(second[0]?.candidates[0]?.name)
-    expect(new Set(first.map((item) => item.department)).size).toBeGreaterThan(5)
+    expect(daysSince('2026-11-07T08:00:00Z', now)).toBe(0)
+    expect(daysSince('2026-11-05T12:00:00Z', now)).toBe(2)
+    expect(daysSince('2026-11-10T12:00:00Z', now)).toBe(0)
   })
 
-  it('flags active candidates over their step target', () => {
-    const item = board()
+  it('derives time in step and time since application', () => {
+    const now = new Date('2026-11-07T12:00:00Z')
+    const item = candidate()
 
-    expect(isOverTarget(item, candidate({ daysInStep: 2 }))).toBe(false)
-    expect(isOverTarget(item, candidate({ daysInStep: 3 }))).toBe(true)
-    expect(isOverTarget(item, candidate({ daysInStep: 9, status: 'rejected' }))).toBe(false)
-    expect(countOverTarget(item)).toBe(0)
+    expect(daysInStep(item, now)).toBe(4)
+    expect(daysSinceApplied(item, now)).toBe(6)
   })
 
-  it('summarises active, closed, and per-step counts', () => {
+  it('flags boards whose deadline has passed', () => {
+    const now = new Date('2026-11-07T12:00:00Z')
+
+    expect(isOverdue(board({ deadline: '2026-11-30' }), now)).toBe(false)
+    expect(isOverdue(board({ deadline: '2026-11-06' }), now)).toBe(true)
+  })
+
+  it('summarises active, closed, overdue, and per-step counts', () => {
     const item = board({
+      deadline: '2026-11-06',
       candidates: [
-        candidate({ id: 'a', daysInStep: 3 }),
+        candidate({ id: 'a' }),
         candidate({ id: 'b', stepId: 's2' }),
         candidate({ id: 'c', status: 'hired', stepId: 's2' }),
         candidate({ id: 'd', status: 'rejected' }),
@@ -77,7 +84,7 @@ describe('pipeline helpers', () => {
     const summary = summariseBoard(item)
 
     expect(summary.active).toBe(2)
-    expect(summary.overTarget).toBe(1)
+    expect(summary.overdue).toBe(true)
     expect(summary.hired).toBe(1)
     expect(summary.rejected).toBe(1)
     expect(summary.pipelineCounts).toEqual([1, 1])
@@ -92,15 +99,20 @@ describe('pipeline helpers', () => {
     expect(previousStep(item, candidate())).toBeUndefined()
   })
 
-  it('groups boards in department order and sums totals', () => {
-    const boards = createBoards()
+  it('groups boards in department order, sorts by name, and sums totals', () => {
+    const boards = [
+      board({ id: 'b1', name: 'Zeta', department: 'Engineering' }),
+      board({ id: 'b2', name: 'Alpha', department: 'Engineering' }),
+      board({ id: 'b3', name: 'Design lead', department: 'Design', deadline: '2026-11-01' }),
+    ]
     const groups = groupBoards(boards)
 
     expect(groups[0]?.department).toBe('Engineering')
-    expect(groups[groups.length - 1]?.department).toBe('Marketing')
+    expect(groups[0]?.boards.map((item) => item.name)).toEqual(['Alpha', 'Zeta'])
 
     const totals = summariseBoards(boards)
-    expect(totals.openPositions).toBe(boards.reduce((sum, item) => sum + item.openPositions, 0))
-    expect(totals.active).toBeGreaterThan(0)
+    expect(totals.openPositions).toBe(3)
+    expect(totals.active).toBe(3)
+    expect(totals.overdue).toBe(1)
   })
 })
